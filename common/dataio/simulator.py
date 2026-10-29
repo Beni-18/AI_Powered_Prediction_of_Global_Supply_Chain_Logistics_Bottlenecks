@@ -121,9 +121,9 @@ def simulate_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFram
     day_of_year = hours.dayofyear.to_numpy()
 
     # --- 1. Weather: seasonal pattern + slow random wobble, worse for East Asia in typhoon season.
-    season = 1.5 + 1.0 * np.cos(2 * np.pi * (day_of_year - 15) / 365)[:, None]  # winter storms
+    season = 1.5 + 0.4 * np.cos(2 * np.pi * (day_of_year - 15) / 365)[:, None]  # winter storms
     typhoon = (nodes["region"].eq("East Asia").to_numpy()[None, :]
-               * 2.0 * np.exp(-((day_of_year - 245) / 35.0) ** 2)[:, None])     # peaks early Sept
+               * 0.8 * np.exp(-((day_of_year - 245) / 35.0) ** 2)[:, None])     # peaks early Sept
     weather = season + typhoon + _ar1(H, N, 0.98, 0.15, rng)
 
     # --- 2. Slow drivers around their calm-day level (AR(1) keeps them realistic and smooth).
@@ -166,8 +166,8 @@ def simulate_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFram
 
     # --- 4. Peak season (Aug-Oct) and a slow global stress index (stand-in for NY Fed GSCPI
     # until scripts/fetch_real_data.py provides the real monthly values).
-    peak = 0.25 * np.exp(-((day_of_year - 260) / 40.0) ** 2)
-    global_stress = 0.1 * np.sin(2 * np.pi * day_of_year / 365 * 0.5 + 1.0)
+    peak = 0.08 * np.exp(-((day_of_year - 260) / 40.0) ** 2)
+    global_stress = 0.03 * np.sin(2 * np.pi * day_of_year / 365 + 1.0)
 
     # --- 5. Upstream lanes: for each node, which nodes feed it and after how many hours.
     incoming = {j: [] for j in range(N)}
@@ -290,10 +290,10 @@ def simulate_shipments(state: dict, nodes: pd.DataFrame, edges: pd.DataFrame, n:
             if step + k + 1 < len(path):
                 clock += int(transit[(node, path[k + step + 1])]) + int(state["nominal_dwell"][jj])
         # The current node matters most (we are stuck in it); later nodes add a smaller share.
-        # The weights (1.5, 0.15) and the curve (0.7, 0.04) were tuned ONCE for the class mix (see SIM_CARD.md).
+        # The weights (1.5, 0.15) and the curve (0.7, 0.14) were tuned ONCE for the class mix (see SIM_CARD.md).
         # The squared term makes heavy congestion hurt much more than light congestion, like real queues.
         systematic = 1.5 * here_wait + 0.15 * ahead_wait
-        delay = (0.7 * systematic + 0.04 * systematic ** 2) * CARRIER_FACTOR[carriers[i]] * PRIORITY_FACTOR[priorities[i]] + hidden[i]
+        delay = (0.7 * systematic + 0.14 * systematic ** 2) * CARRIER_FACTOR[carriers[i]] * PRIORITY_FACTOR[priorities[i]] + hidden[i]
 
         rows.append({
             "timestamp": state["hours"][t] + pd.Timedelta(minutes=int(rng.integers(0, 60))),

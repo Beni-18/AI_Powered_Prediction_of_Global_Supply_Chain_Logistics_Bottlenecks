@@ -5,8 +5,8 @@
   "n_hourly_rows": 234142,
   "hidden_scale": 1.0,
   "class_mix_before_planting": {
-    "ON_TIME": 0.6481833333333333,
-    "AT_RISK": 0.24088333333333334,
-    "CRITICAL_DELAY": 0.11093333333333333
+    "ON_TIME": 0.6336166666666667,
+    "AT_RISK": 0.22903333333333334,
+    "CRITICAL_DELAY": 0.13735
   }
 }
