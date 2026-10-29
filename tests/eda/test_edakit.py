@@ -4,10 +4,16 @@ Verifies styling, saving, PSI calculation, robust noise floor, KS drift, and lea
 """
 
 from pathlib import Path
+import pytest
+
+# Skip this test module in environments (like CI) where only requirements-dev.txt is installed
+pytest.importorskip("matplotlib")
+pytest.importorskip("scipy")
+pytest.importorskip("sklearn")
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pytest
 
 from common.edakit import (
     apply_style,
