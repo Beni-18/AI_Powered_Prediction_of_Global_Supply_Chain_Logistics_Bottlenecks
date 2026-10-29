@@ -23,7 +23,13 @@ NUMERIC = ["dwell_time_hours", "throughput_teu_per_hr", "capacity_utilization_pc
 
 
 def build_prepared() -> pd.DataFrame:
-    """Raw shipments -> de-duplicated, labelled rows with a chronological split and a 168 h purge gap."""
+    """The team's real prepared dataset when it exists; otherwise a quick stand-in built from the raw simulator files."""
+    real = REPO_ROOT / "Stage01_ML" / "data" / "prepared_dataset.csv.gz"
+    if real.exists():
+        df = pd.read_csv(real)
+        df = df[df["split"].isin(["train", "val", "test"]) & df["delay_status"].notna()].copy()
+        df["priority_code"] = df["priority_tier"].astype("category").cat.codes
+        return df
     raw = pd.read_csv(REPO_ROOT / "data" / "raw" / "sim" / "shipment_telemetry_raw.csv.gz")
     df = raw.drop_duplicates("record_id").dropna(subset=["realized_delay_hours"]).copy()
     df["ts"] = pd.to_datetime(df["timestamp"], utc=True)

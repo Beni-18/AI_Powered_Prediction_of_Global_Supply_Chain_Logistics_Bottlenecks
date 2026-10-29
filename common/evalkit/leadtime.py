@@ -13,7 +13,6 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-HOUR = np.timedelta64(1, "h")
 
 
 def _hours(times) -> np.ndarray:
@@ -22,43 +21,45 @@ def _hours(times) -> np.ndarray:
     return arr.astype("int64") / 3.6e12  # nanoseconds -> hours
 
 
-def episodes_from_series(times, values, threshold: float, min_hours: int = 6, min_gap_hours: int = 24) -> list:
+def episodes_from_series(times, values, threshold: float, min_hours: int = 6, min_gap_hours: int = 24, bridge_hours: int = 3) -> list:
     """Return the onset timestamp of every episode in one node's hourly series.
 
     A run counts when the value stays above `threshold` for at least `min_hours` consecutive hours.
     Runs closer than `min_gap_hours` (end of one to start of the next) are merged into one episode.
+    The raw hourly grid has about 1% missing hours, so a gap of up to `bridge_hours` missing hours inside
+    a run is bridged with the last known value instead of cutting a real episode in two.
     """
-    t = pd.to_datetime(pd.Series(list(times))).reset_index(drop=True)
-    v = np.asarray(values, dtype=float)
-    order = np.argsort(t.to_numpy())
-    t, v = t.iloc[order].reset_index(drop=True), v[order]
-    above = v > threshold
+    series = pd.Series(np.asarray(values, dtype=float), index=pd.to_datetime(pd.Series(list(times))).dt.floor("h"))
+    # One value per hour, in time order; if two rows share an hour keep the last.
+    series = series[~series.index.duplicated(keep="last")].sort_index()
+    if series.empty:
+        return []
+    grid = series.reindex(pd.date_range(series.index[0], series.index[-1], freq="h"))
+    above = (grid.ffill(limit=bridge_hours) > threshold).to_numpy()
+    stamps = grid.index
 
-    runs = []  # (start_hour, end_hour, start_timestamp) of qualifying runs
-    h = _hours(t)
-    i = 0
+    runs, i = [], 0  # (start_index, end_index) of runs long enough to count
     while i < len(above):
         if not above[i]:
             i += 1
             continue
         j = i
-        # Extend while the next row is the next hour AND still above the threshold.
-        while j + 1 < len(above) and above[j + 1] and abs(h[j + 1] - h[j] - 1.0) < 1e-6:
+        while j + 1 < len(above) and above[j + 1]:
             j += 1
-        if (h[j] - h[i]) + 1.0 >= min_hours:
-            runs.append((h[i], h[j], t.iloc[i]))
+        if j - i + 1 >= min_hours:
+            runs.append((i, j))
         i = j + 1
 
     onsets, last_end = [], None
-    for start_h, end_h, start_ts in runs:
-        if last_end is None or start_h - last_end >= min_gap_hours:
-            onsets.append(start_ts)
-        last_end = end_h  # a merged run extends the current episode
+    for start, end in runs:
+        if last_end is None or start - last_end >= min_gap_hours:
+            onsets.append(stamps[start])
+        last_end = end  # a merged run extends the current episode
     return onsets
 
 
 def lead_time(alert_times, onset_times, max_lookback_h: int = 168) -> dict:
-    """Score alerts against onsets for one node (or one pooled set of nodes with unique times).
+    """Score alerts against onsets for ONE node. For many nodes use lead_time_by_node (never pool raw times).
 
     Returns the per-episode lead times (NaN = missed), episode recall, the false alarm count,
     and the median and quartiles of the lead time over caught episodes.
@@ -90,4 +91,30 @@ def lead_time(alert_times, onset_times, max_lookback_h: int = 168) -> dict:
         "q75_lead_h": float(np.percentile(caught, 75)) if len(caught) else float("nan"),
         "n_alerts": int(len(alerts)),
         "false_alarms": int(false_alarms),
+    }
+
+
+def lead_time_by_node(alerts: pd.DataFrame, onsets: pd.DataFrame, max_lookback_h: int = 168) -> dict:
+    """Score alerts against onsets node by node, then pool the results.
+
+    Both frames need columns `node_id` and `time`. An alert only counts for an onset at the SAME node, so a
+    warning at one port is never credited to another port's bottleneck.
+    """
+    nodes = sorted(set(alerts["node_id"]) | set(onsets["node_id"]))
+    leads, false_alarms, n_alerts = [], 0, 0
+    for node in nodes:
+        res = lead_time(list(alerts.loc[alerts["node_id"] == node, "time"]), list(onsets.loc[onsets["node_id"] == node, "time"]), max_lookback_h)
+        leads.extend(res["lead_times_h"])
+        false_alarms += res["false_alarms"]
+        n_alerts += res["n_alerts"]
+    leads = np.array(leads, dtype=float)
+    caught = leads[~np.isnan(leads)]
+    return {
+        "n_episodes": int(len(leads)), "n_caught": int(len(caught)),
+        "episode_recall": float(len(caught) / len(leads)) if len(leads) else float("nan"),
+        "lead_times_h": leads,
+        "median_lead_h": float(np.median(caught)) if len(caught) else float("nan"),
+        "q25_lead_h": float(np.percentile(caught, 25)) if len(caught) else float("nan"),
+        "q75_lead_h": float(np.percentile(caught, 75)) if len(caught) else float("nan"),
+        "n_alerts": n_alerts, "false_alarms": false_alarms,
     }
