@@ -1,0 +1,8 @@
+{
+  "train_end": "2025-09-14T02:42:30Z",
+  "val_start": "2025-09-21T02:42:30Z",
+  "val_end": "2025-11-07T02:49:51Z",
+  "test_start": "2025-11-14T02:49:51Z",
+  "purge_gap_hours": 168,
+  "rule": "rows in [boundary, boundary+gap) keep the earlier split and have in_purge_gap=True"
+}

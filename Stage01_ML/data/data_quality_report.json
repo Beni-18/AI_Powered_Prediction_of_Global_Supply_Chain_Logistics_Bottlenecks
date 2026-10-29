@@ -1,0 +1,118 @@
+{
+  "input_file": "data/raw/sim/shipment_telemetry_raw.csv.gz",
+  "rows_in": 60100,
+  "coercion_failures": {
+    "timestamp": 0,
+    "dwell_time_hours": 0,
+    "throughput_teu_per_hr": 0,
+    "capacity_utilization_pct": 0,
+    "customs_hold_hours": 0,
+    "weather_severity_index": 0,
+    "labor_deficit_ratio": 0,
+    "equipment_availability_pct": 0,
+    "historical_delay_rate": 0,
+    "realized_delay_hours": 0
+  },
+  "exact_duplicates_removed": 100,
+  "near_duplicates_flagged": 0,
+  "range_flags": {
+    "dwell_time_hours": 0,
+    "throughput_teu_per_hr": 0,
+    "capacity_utilization_pct": 0,
+    "customs_hold_hours": 0,
+    "weather_severity_index": 0,
+    "labor_deficit_ratio": 0,
+    "equipment_availability_pct": 0,
+    "historical_delay_rate": 0
+  },
+  "overload_rows": 175,
+  "missing_filled_with_train_median": {
+    "dwell_time_hours": {
+      "rows": 442,
+      "median": 33.033
+    },
+    "throughput_teu_per_hr": {
+      "rows": 444,
+      "median": 274.5155
+    },
+    "capacity_utilization_pct": {
+      "rows": 404,
+      "median": 63.972
+    },
+    "customs_hold_hours": {
+      "rows": 421,
+      "median": 1.976
+    },
+    "weather_severity_index": {
+      "rows": 458,
+      "median": 1.464
+    },
+    "labor_deficit_ratio": {
+      "rows": 479,
+      "median": 0.027
+    },
+    "equipment_availability_pct": {
+      "rows": 437,
+      "median": 93.032
+    },
+    "historical_delay_rate": {
+      "rows": 442,
+      "median": 0.299
+    }
+  },
+  "rows_out": 60000,
+  "extra_columns": [
+    "dup_flag",
+    "in_purge_gap",
+    "overload_flag",
+    "was_missing_dwell_time_hours",
+    "was_missing_throughput_teu_per_hr",
+    "was_missing_capacity_utilization_pct",
+    "was_missing_customs_hold_hours",
+    "was_missing_weather_severity_index",
+    "was_missing_labor_deficit_ratio",
+    "was_missing_equipment_availability_pct",
+    "was_missing_historical_delay_rate"
+  ],
+  "purge_gap_rows": 2281,
+  "split_boundaries": {
+    "train_end": "2025-09-14T02:42:30Z",
+    "val_start": "2025-09-21T02:42:30Z",
+    "val_end": "2025-11-07T02:49:51Z",
+    "test_start": "2025-11-14T02:49:51Z",
+    "purge_gap_hours": 168,
+    "rule": "rows in [boundary, boundary+gap) keep the earlier split and have in_purge_gap=True"
+  },
+  "per_split": {
+    "test": {
+      "rows": 7899,
+      "date_min": "2025-11-14T03:13:00Z",
+      "date_max": "2025-12-31T23:48:00Z",
+      "class_mix": {
+        "ON_TIME": 0.548,
+        "AT_RISK": 0.2729,
+        "CRITICAL_DELAY": 0.179
+      }
+    },
+    "train": {
+      "rows": 43180,
+      "date_min": "2025-01-01T00:14:00Z",
+      "date_max": "2025-09-21T02:27:00Z",
+      "class_mix": {
+        "ON_TIME": 0.6739,
+        "AT_RISK": 0.2035,
+        "CRITICAL_DELAY": 0.1226
+      }
+    },
+    "val": {
+      "rows": 8921,
+      "date_min": "2025-09-21T02:50:00Z",
+      "date_max": "2025-11-14T02:48:00Z",
+      "class_mix": {
+        "ON_TIME": 0.5142,
+        "AT_RISK": 0.3141,
+        "CRITICAL_DELAY": 0.1717
+      }
+    }
+  }
+}
