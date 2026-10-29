@@ -1,0 +1,39 @@
+#!/bin/sh
+# pre-commit hook: blocks files that must never reach GitHub.
+#   - anything bigger than 50 MB (GitHub's hard limit is 100 MB)
+#   - .env files, private keys
+#   - the _reference/ folder (reference project and PDFs stay on each device only)
+#   - strings that look like API keys / tokens
+# Install once per clone:   git config core.hooksPath .githooks
+
+MAX_BYTES=52428800
+LIST="$(mktemp)"
+bad=0
+
+git diff --cached --name-only --diff-filter=ACM > "$LIST"
+
+while IFS= read -r f; do
+  [ -f "$f" ] || continue
+
+  case "$f" in
+    _reference/README.md) ;;
+    _reference/*) echo "pre-commit: '$f' is reference material and must stay local." >&2; bad=1 ;;
+    .env|*/.env|*.pem|*.key|*id_rsa*) echo "pre-commit: '$f' looks like a secret file." >&2; bad=1 ;;
+  esac
+
+  size="$(wc -c < "$f" | tr -d ' ')"
+  if [ "$size" -gt "$MAX_BYTES" ]; then
+    echo "pre-commit: '$f' is $((size / 1048576)) MB (limit 50 MB). Shrink it (quantise, LoRA adapter only, sample the data) or ask Role 3." >&2
+    bad=1
+  fi
+done < "$LIST"
+rm -f "$LIST"
+
+# Scan only the lines being added for token-looking strings.
+if git diff --cached -U0 | grep -E '^\+' | grep -qE 'sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|hf_[A-Za-z0-9]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'; then
+  echo "pre-commit: a staged change contains something that looks like an API key or token. Remove it and use .env." >&2
+  bad=1
+fi
+
+[ "$bad" -eq 0 ] || { echo "pre-commit: commit blocked." >&2; exit 1; }
+exit 0

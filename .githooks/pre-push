@@ -1,0 +1,46 @@
+#!/bin/sh
+# pre-push hook: last safety net before commits leave your laptop.
+#   1) BLOCKS the push if any commit about to be pushed still carries an AI co-author / "Generated with" line.
+#   2) WARNS (does not block) if a commit touches files outside its owner's lane. CI enforces that one.
+# Install once per clone:   git config core.hooksPath .githooks
+
+ZERO="0000000000000000000000000000000000000000"
+PY="$(command -v python3 || command -v python)"
+blocked=0
+
+# One pattern that matches both kinds of forbidden line (case-insensitive).
+PATTERN='co-authored-by:.*(claude|anthropic|copilot|chatgpt|openai|codex|gemini|cursor|windsurf|cline|aider|devin|\[bot\]|noreply@anthropic)|(generated|created|written|made|authored)[[:space:]]+(with|by).*(claude|copilot|chatgpt|codex|gemini|cursor|windsurf|aider)'
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Deleting a remote branch: nothing to check.
+  [ "$local_sha" = "$ZERO" ] && continue
+
+  if [ "$remote_sha" = "$ZERO" ]; then
+    # New branch: check everything that is not already on origin/main (or everything if origin/main is unknown).
+    if git rev-parse --verify -q origin/main >/dev/null; then RANGE="origin/main..$local_sha"; else RANGE="$local_sha"; fi
+  else
+    RANGE="$remote_sha..$local_sha"
+  fi
+
+  # --- 1. AI attribution scan: look at the full message of every commit in the range ---
+  for sha in $(git rev-list "$RANGE"); do
+    found="$(git log -1 --format=%B "$sha" | grep -iE "$PATTERN")"
+    if [ -n "$found" ]; then
+      echo "pre-push: BLOCKED. Commit $(git log -1 --format=%h "$sha") carries AI attribution, which the team forbids:" >&2
+      echo "    $found" >&2
+      blocked=1
+    fi
+  done
+
+  # --- 2. ownership warning ---
+  if [ -n "$PY" ] && [ -f scripts/check_ownership.py ]; then
+    "$PY" scripts/check_ownership.py --range "$RANGE" --warn-only >&2 || true
+  fi
+done
+
+if [ "$blocked" -ne 0 ]; then
+  echo "Fix:  git rebase origin/main --exec \"$PY scripts/strip_ai_trailers.py\"   then push again." >&2
+  echo "      (see docs/04_GITHUB_WORKFLOW.md, section 'An AI co-author line slipped into a commit')" >&2
+  exit 1
+fi
+exit 0

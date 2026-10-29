@@ -1,0 +1,39 @@
+#!/bin/sh
+# commit-msg hook.
+# 1) AUTOMATICALLY removes any AI-tool attribution from the commit message
+#    (Co-authored-by: Claude / Copilot / Gemini / Codex / Cursor ..., "Generated with Claude Code", etc.).
+#    Team rule: commits are authored by the human teammate only.
+# 2) Rejects messages that do not follow:   <type>(<stage>): <message>
+#    types: data, eda, ml, eval, integ, docs, chore, ci        (Merge/Revert commits are allowed)
+#
+# Install once per clone:   git config core.hooksPath .githooks
+
+MSG_FILE="$1"
+TMP="$(mktemp)"
+
+# --- 1. strip AI attribution lines (case-insensitive) ---
+grep -viE '^[[:space:]]*co-authored-by:.*(claude|anthropic|copilot|chatgpt|openai|codex|gemini|cursor|windsurf|cline|aider|devin|\[bot\]|noreply@anthropic)' "$MSG_FILE" \
+  | grep -viE '(generated|created|written|made|authored)[[:space:]]+(with|by).*(claude|copilot|chatgpt|codex|gemini|cursor|windsurf|aider)' \
+  > "$TMP" || true
+
+if ! cmp -s "$MSG_FILE" "$TMP"; then
+  cp "$TMP" "$MSG_FILE"
+  echo "commit-msg hook: removed AI attribution line(s) from your commit message (team rule)." >&2
+fi
+rm -f "$TMP"
+
+# --- 2. check the subject line ---
+SUBJECT="$(grep -v '^#' "$MSG_FILE" | sed -n '1p')"
+
+case "$SUBJECT" in
+  Merge\ *|Revert\ *) exit 0 ;;
+esac
+
+if ! printf '%s\n' "$SUBJECT" | grep -qE '^(data|eda|ml|eval|integ|docs|chore|ci)(\([a-z0-9_, -]+\))?!?: [^ ]'; then
+  echo "" >&2
+  echo "commit-msg hook: BAD SUBJECT -> '$SUBJECT'" >&2
+  echo "Use:  <type>(<stage>): <message>     e.g.  ml(stage01): train xgboost baseline" >&2
+  echo "Types: data, eda, ml, eval, integ, docs, chore, ci   (see docs/04_GITHUB_WORKFLOW.md)" >&2
+  exit 1
+fi
+exit 0

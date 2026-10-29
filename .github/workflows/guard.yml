@@ -1,0 +1,63 @@
+name: guard
+
+# Runs on every push and every pull request.
+# It proves four things: no AI co-author lines, every commit stays in its owner's lane,
+# the shared contracts still validate, and the tests pass.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      # Full history is needed to inspect individual commits.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the small toolset
+        run: pip install -r requirements-dev.txt
+
+      # Decide which commits are "new" in this run.
+      - name: Work out the commit range
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "range=origin/${{ github.base_ref }}..${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            echo "range=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "range=${{ github.event.before }}..${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Rule 1: nobody (human or tool) may add AI attribution to commits.
+      - name: No AI co-author or "Generated with" lines
+        run: |
+          PATTERN='co-authored-by:.*(claude|anthropic|copilot|chatgpt|openai|codex|gemini|cursor|windsurf|cline|aider|devin|\[bot\]|noreply@anthropic)|(generated|created|written|made|authored)[[:space:]]+(with|by).*(claude|copilot|chatgpt|codex|gemini|cursor|windsurf|aider)'
+          fail=0
+          for sha in $(git rev-list "${{ steps.range.outputs.range }}"); do
+            # Merge commits made by GitHub itself are skipped.
+            parents=$(git rev-list --parents -n 1 "$sha" | wc -w)
+            [ "$parents" -gt 2 ] && continue
+            if git log -1 --format=%B "$sha" | grep -iE "$PATTERN"; then
+              echo "::error::Commit $sha carries AI attribution (see docs/04_GITHUB_WORKFLOW.md)"; fail=1
+            fi
+          done
+          exit $fail
+
+      # Rule 2: commit subject format and file ownership.
+      - name: Commit format and file ownership
+        run: python scripts/check_ownership.py --range "${{ steps.range.outputs.range }}"
+
+      # Rule 3: contracts and tests.
+      - name: Contract examples validate
+        run: python scripts/validate_contract.py --self-test
+
+      - name: Tests
+        run: python -m pytest tests -q
