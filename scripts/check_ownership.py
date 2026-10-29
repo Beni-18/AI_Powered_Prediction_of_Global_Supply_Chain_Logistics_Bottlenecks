@@ -128,7 +128,12 @@ def main() -> int:
     args = parser.parse_args()
 
     rules = load_rules()
-    shas = commits_in_range(args.range) if args.range else [args.commit]
+    # A bad revision range (typo, branch not fetched) should give a readable message, not a traceback.
+    try:
+        shas = commits_in_range(args.range) if args.range else [args.commit]
+    except subprocess.CalledProcessError as err:
+        print(f"Could not read that git range/commit: {err.stderr.strip() or err}")
+        return 2
 
     problems = []
     for sha in shas:
