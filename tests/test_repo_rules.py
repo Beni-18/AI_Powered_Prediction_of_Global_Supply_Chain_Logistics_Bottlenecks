@@ -109,7 +109,7 @@ def test_strip_leaves_clean_message_unchanged():
 # ---------- stubs behave ----------
 
 def test_stub_scripts_exit_with_not_implemented_code():
-    result = subprocess.run([sys.executable, "03_ml_engineer.py"], cwd=REPO_ROOT / "Stage01_ML", capture_output=True, text=True)
+    result = subprocess.run([sys.executable, "03_nlp_engineer.py"], cwd=REPO_ROOT / "Stage03_NLP", capture_output=True, text=True)
     assert result.returncode == 3
     assert "NOT_IMPLEMENTED" in result.stdout
 
