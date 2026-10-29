@@ -55,10 +55,11 @@ def derive_delay_status(realized_delay_hours: pd.Series) -> pd.Series:
 def assign_split(timestamps: pd.Series) -> tuple[pd.Series, pd.Series, dict]:
     """Chronological 70/15/15 split with a 168 h purge gap. Returns (split, in_purge_gap, boundaries).
 
-    Rule we implement (no row is dropped):
+    Rule we implement:
       - train_end and val_end are the 70% and 85% points in time.
-      - A row in the 168 h right AFTER a boundary keeps the EARLIER split and gets in_purge_gap=True,
-        so the next split really starts 168 h later. Models may leave purge-gap rows out of training.
+      - Rows in the 168 h right AFTER a boundary get in_purge_gap=True. main() REMOVES them (and logs
+        the count), so there is a real 7-day hole between train and val, and between val and test.
+        Without the hole, a train shipment's outcome (which happens days later) could overlap val time.
       - Each row is its own shipment_id here, so a shipment can never sit in two splits.
     """
     policy = LABEL_POLICY["split_policy"]
@@ -83,7 +84,7 @@ def assign_split(timestamps: pd.Series) -> tuple[pd.Series, pd.Series, dict]:
         "train_end": train_end.strftime(fmt), "val_start": (train_end + gap).strftime(fmt),
         "val_end": val_end.strftime(fmt), "test_start": (val_end + gap).strftime(fmt),
         "purge_gap_hours": policy["purge_gap_hours"],
-        "rule": "rows in [boundary, boundary+gap) keep the earlier split and have in_purge_gap=True",
+        "rule": "rows in [boundary, boundary+gap) are removed by the purge; count in data_quality_report.json",
     }
     return split, in_gap, boundaries
 
@@ -127,7 +128,11 @@ def main() -> int:
 
     # Step 4: derive the label from the OUTCOME only, and assign the one split.
     df["delay_status"] = derive_delay_status(df["realized_delay_hours"])
-    df["split"], df["in_purge_gap"], boundaries = assign_split(df["timestamp"])
+    df["split"], in_gap, boundaries = assign_split(df["timestamp"])
+    # Purge: remove the rows inside the 7-day gaps so the splits are truly separated in time.
+    # This is the ONE place rows are removed on purpose; the count goes into the report.
+    report["purge_gap_rows_removed"] = int(in_gap.sum())
+    df = df[~in_gap].reset_index(drop=True)
 
     # Step 5: range rules from the schema. Out-of-range values are FLAGGED and KEPT, never clipped.
     report["range_flags"] = {}
@@ -164,7 +169,6 @@ def main() -> int:
     # Step 8: data quality report - every change above, plus class mix and dates per split.
     report["rows_out"] = len(df)
     report["extra_columns"] = contract.extra_columns
-    report["purge_gap_rows"] = int(df["in_purge_gap"].sum())
     report["split_boundaries"] = boundaries
     report["per_split"] = {}
     for name, part in df.groupby("split"):

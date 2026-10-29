@@ -29,13 +29,13 @@ def test_split_is_chronological_with_purge_gap():
     """Every train row is earlier than every val row, val earlier than test, and the gap is respected."""
     ts = pd.Series(pd.date_range("2025-01-01", periods=24 * 365, freq="h", tz="UTC"))
     split, in_gap, b = stage01.assign_split(ts)
-    assert ts[split == "train"].max() < ts[split == "val"].min() < ts[split == "test"].min()
-    # The first val row starts at least 168 h after train_end.
-    assert ts[split == "val"].min() >= pd.Timestamp(b["val_start"])
-    assert ts[split == "test"].min() >= pd.Timestamp(b["test_start"])
-    # Nothing is dropped and the fractions are close to 70 / 15 / 15.
-    assert len(split) == len(ts)
-    assert abs((split == "train").mean() - 0.70 - in_gap.mean() / 2) < 0.02
+    # After the purge (main() removes in_gap rows) there must be a full 168 h hole between splits.
+    split, ts = split[~in_gap], ts[~in_gap]
+    gap = pd.Timedelta(hours=168)
+    assert ts[split == "val"].min() - ts[split == "train"].max() >= gap
+    assert ts[split == "test"].min() - ts[split == "val"].max() >= gap
+    # The shares stay close to 70 / 15 / 15 (the purge only removes two weeks of rows).
+    assert abs((split == "train").mean() - 0.70) < 0.03
 
 
 def test_adjacency_shape_and_symmetry():

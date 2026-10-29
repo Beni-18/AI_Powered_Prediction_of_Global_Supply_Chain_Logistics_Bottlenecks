@@ -15,6 +15,7 @@
   },
   "exact_duplicates_removed": 100,
   "near_duplicates_flagged": 0,
+  "purge_gap_rows_removed": 2281,
   "range_flags": {
     "dwell_time_hours": 0,
     "throughput_teu_per_hr": 0,
@@ -25,45 +26,44 @@
     "equipment_availability_pct": 0,
     "historical_delay_rate": 0
   },
-  "overload_rows": 175,
+  "overload_rows": 160,
   "missing_filled_with_train_median": {
     "dwell_time_hours": {
-      "rows": 442,
-      "median": 33.033
+      "rows": 436,
+      "median": 32.904
     },
     "throughput_teu_per_hr": {
-      "rows": 444,
-      "median": 274.5155
+      "rows": 421,
+      "median": 274.237
     },
     "capacity_utilization_pct": {
-      "rows": 404,
-      "median": 63.972
+      "rows": 378,
+      "median": 63.935
     },
     "customs_hold_hours": {
-      "rows": 421,
-      "median": 1.976
+      "rows": 408,
+      "median": 1.967
     },
     "weather_severity_index": {
-      "rows": 458,
-      "median": 1.464
+      "rows": 436,
+      "median": 1.467
     },
     "labor_deficit_ratio": {
-      "rows": 479,
+      "rows": 464,
       "median": 0.027
     },
     "equipment_availability_pct": {
-      "rows": 437,
-      "median": 93.032
+      "rows": 421,
+      "median": 93.037
     },
     "historical_delay_rate": {
-      "rows": 442,
-      "median": 0.299
+      "rows": 423,
+      "median": 0.3
     }
   },
-  "rows_out": 60000,
+  "rows_out": 57719,
   "extra_columns": [
     "dup_flag",
-    "in_purge_gap",
     "overload_flag",
     "was_missing_dwell_time_hours",
     "was_missing_throughput_teu_per_hr",
@@ -74,14 +74,13 @@
     "was_missing_equipment_availability_pct",
     "was_missing_historical_delay_rate"
   ],
-  "purge_gap_rows": 2281,
   "split_boundaries": {
     "train_end": "2025-09-14T02:42:30Z",
     "val_start": "2025-09-21T02:42:30Z",
     "val_end": "2025-11-07T02:49:51Z",
     "test_start": "2025-11-14T02:49:51Z",
     "purge_gap_hours": 168,
-    "rule": "rows in [boundary, boundary+gap) keep the earlier split and have in_purge_gap=True"
+    "rule": "rows in [boundary, boundary+gap) are removed by the purge; count in data_quality_report.json"
   },
   "per_split": {
     "test": {
@@ -95,23 +94,23 @@
       }
     },
     "train": {
-      "rows": 43180,
+      "rows": 42000,
       "date_min": "2025-01-01T00:14:00Z",
-      "date_max": "2025-09-21T02:27:00Z",
+      "date_max": "2025-09-14T02:41:00Z",
       "class_mix": {
-        "ON_TIME": 0.6739,
-        "AT_RISK": 0.2035,
-        "CRITICAL_DELAY": 0.1226
+        "ON_TIME": 0.679,
+        "AT_RISK": 0.2011,
+        "CRITICAL_DELAY": 0.1199
       }
     },
     "val": {
-      "rows": 8921,
+      "rows": 7820,
       "date_min": "2025-09-21T02:50:00Z",
-      "date_max": "2025-11-14T02:48:00Z",
+      "date_max": "2025-11-07T02:47:00Z",
       "class_mix": {
-        "ON_TIME": 0.5142,
-        "AT_RISK": 0.3141,
-        "CRITICAL_DELAY": 0.1717
+        "ON_TIME": 0.5105,
+        "AT_RISK": 0.3171,
+        "CRITICAL_DELAY": 0.1724
       }
     }
   }
