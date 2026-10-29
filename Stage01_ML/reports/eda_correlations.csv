@@ -1,0 +1,9 @@
+,dwell_time_hours,throughput_teu_per_hr,capacity_utilization_pct,customs_hold_hours,weather_severity_index,labor_deficit_ratio,equipment_availability_pct,historical_delay_rate
+dwell_time_hours,1.0,-0.5307,0.5773,0.7948,0.1863,0.1256,-0.1842,0.422
+throughput_teu_per_hr,-0.5307,1.0,0.1376,-0.71,0.0413,0.0477,-0.0099,-0.0546
+capacity_utilization_pct,0.5773,0.1376,1.0,0.2051,0.2254,0.1915,-0.3096,0.4135
+customs_hold_hours,0.7948,-0.71,0.2051,1.0,0.0761,0.0238,-0.0123,0.2342
+weather_severity_index,0.1863,0.0413,0.2254,0.0761,1.0,-0.0208,-0.028,0.23
+labor_deficit_ratio,0.1256,0.0477,0.1915,0.0238,-0.0208,1.0,0.0563,0.0922
+equipment_availability_pct,-0.1842,-0.0099,-0.3096,-0.0123,-0.028,0.0563,1.0,0.0047
+historical_delay_rate,0.422,-0.0546,0.4135,0.2342,0.23,0.0922,0.0047,1.0

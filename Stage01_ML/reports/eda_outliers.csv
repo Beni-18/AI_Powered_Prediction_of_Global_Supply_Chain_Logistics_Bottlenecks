@@ -1,0 +1,9 @@
+column,min_val,max_val,median_val,iqr_outlier_count,robust_z_outlier_count,legitimate_overloads_preserved
+dwell_time_hours,5.52,342.55,37.56,226,107,0
+throughput_teu_per_hr,98.21,963.74,295.92,0,1251,0
+capacity_utilization_pct,43.22,131.44,68.57,1190,529,324
+customs_hold_hours,-0.0,38.35,2.0,70,55,0
+weather_severity_index,0.0,9.15,1.59,702,401,0
+labor_deficit_ratio,0.0,0.54,0.03,263,207,0
+equipment_availability_pct,55.05,100.0,93.04,459,256,0
+historical_delay_rate,0.0,1.0,0.31,0,0,0

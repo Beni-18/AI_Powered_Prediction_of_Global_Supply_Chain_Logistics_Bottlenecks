@@ -1,0 +1,103 @@
+{
+  "early_period_start": "2025-01-01 00:14:00+00:00",
+  "early_period_end": "2025-05-02 10:54:00+00:00",
+  "late_period_start": "2025-09-01 21:03:00+00:00",
+  "late_period_end": "2025-12-31 23:48:00+00:00",
+  "columns": {
+    "dwell_time_hours": {
+      "psi": 0.2153,
+      "ks_statistic": 0.1005,
+      "ks_p_value": 6.493878062865743e-88,
+      "status": "SIGNIFICANT_DRIFT"
+    },
+    "throughput_teu_per_hr": {
+      "psi": 0.0758,
+      "ks_statistic": 0.0697,
+      "ks_p_value": 2.0825537159555558e-42,
+      "status": "STABLE"
+    },
+    "capacity_utilization_pct": {
+      "psi": 0.2426,
+      "ks_statistic": 0.1862,
+      "ks_p_value": 1.888402984775162e-302,
+      "status": "SIGNIFICANT_DRIFT"
+    },
+    "customs_hold_hours": {
+      "psi": 0.0065,
+      "ks_statistic": 0.0323,
+      "ks_p_value": 1.9810617106372903e-09,
+      "status": "STABLE"
+    },
+    "weather_severity_index": {
+      "psi": 0.0206,
+      "ks_statistic": 0.0594,
+      "ks_p_value": 5.787188770159058e-31,
+      "status": "STABLE"
+    },
+    "labor_deficit_ratio": {
+      "psi": 0.0105,
+      "ks_statistic": 0.0364,
+      "ks_p_value": 6.682464383859292e-12,
+      "status": "STABLE"
+    },
+    "equipment_availability_pct": {
+      "psi": 0.0129,
+      "ks_statistic": 0.042,
+      "ks_p_value": 1.1718110259697536e-15,
+      "status": "STABLE"
+    },
+    "historical_delay_rate": {
+      "psi": 0.6216,
+      "ks_statistic": 0.2178,
+      "ks_p_value": 0.0,
+      "status": "SIGNIFICANT_DRIFT"
+    }
+  },
+  "carriers": {
+    "CMA": {
+      "dwell_psi": 0.1387,
+      "status": "STABLE"
+    },
+    "COSCO": {
+      "dwell_psi": 0.1199,
+      "status": "STABLE"
+    },
+    "EVERGREEN": {
+      "dwell_psi": 0.1052,
+      "status": "STABLE"
+    },
+    "HAPAG": {
+      "dwell_psi": 0.1557,
+      "status": "STABLE"
+    },
+    "HMM": {
+      "dwell_psi": 0.0958,
+      "status": "STABLE"
+    },
+    "MSC": {
+      "dwell_psi": 0.1198,
+      "status": "STABLE"
+    },
+    "MSK": {
+      "dwell_psi": 0.098,
+      "status": "STABLE"
+    },
+    "ONE": {
+      "dwell_psi": 0.1431,
+      "status": "STABLE"
+    },
+    "YANGMING": {
+      "dwell_psi": 0.0861,
+      "status": "STABLE"
+    },
+    "ZIM": {
+      "dwell_psi": 0.2697,
+      "status": "SHIFTED"
+    }
+  },
+  "timestamp_cadence": {
+    "zero_second_pct": 100.0,
+    "minute_distribution_std": 0.00051,
+    "notes": "Timestamps are distributed continuously across minutes without single-minute telemetry bottlenecks."
+  }
+}
