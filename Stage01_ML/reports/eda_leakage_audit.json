@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "max_univariate_auc": 0.8925,
+  "top_predictive_feature": "dwell_time_hours",
+  "depth3_tree_auc": 0.8776,
+  "univariate_aucs": {
+    "dwell_time_hours": 0.8925,
+    "capacity_utilization_pct": 0.8843,
+    "current_node_id": 0.7203,
+    "historical_delay_rate": 0.7194,
+    "customs_hold_hours": 0.705,
+    "weather_severity_index": 0.6511,
+    "equipment_availability_pct": 0.6473,
+    "labor_deficit_ratio": 0.6149,
+    "priority_tier": 0.5251,
+    "carrier_code": 0.5243,
+    "throughput_teu_per_hr": 0.5182
+  },
+  "forbidden_features_excluded": [
+    "realized_delay_hours",
+    "delay_status",
+    "record_id",
+    "shipment_id",
+    "container_id",
+    "scenario_id",
+    "data_origin",
+    "is_synthetic",
+    "split",
+    "timestamp"
+  ],
+  "leakage_risk_assessment": "No single feature or shallow decision tree achieves near-perfect score (>0.95). Simulator generates realistic, learnable outcomes without direct target leakage."
+}

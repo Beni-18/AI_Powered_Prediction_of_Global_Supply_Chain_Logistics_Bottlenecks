@@ -1,0 +1,9 @@
+feature,vif,collinearity_risk
+dwell_time_hours,4.957,ACCEPTABLE
+throughput_teu_per_hr,3.414,ACCEPTABLE
+customs_hold_hours,2.716,ACCEPTABLE
+capacity_utilization_pct,2.314,ACCEPTABLE
+historical_delay_rate,1.307,ACCEPTABLE
+weather_severity_index,1.298,ACCEPTABLE
+equipment_availability_pct,1.15,ACCEPTABLE
+labor_deficit_ratio,1.111,ACCEPTABLE
