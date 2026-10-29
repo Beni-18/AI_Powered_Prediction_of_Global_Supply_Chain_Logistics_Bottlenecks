@@ -1,0 +1,9 @@
+feature,mutual_information
+dwell_time_hours,0.2792
+capacity_utilization_pct,0.235
+throughput_teu_per_hr,0.1468
+weather_severity_index,0.0979
+historical_delay_rate,0.0957
+equipment_availability_pct,0.0792
+customs_hold_hours,0.0389
+labor_deficit_ratio,0.0236
