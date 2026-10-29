@@ -1,0 +1,5 @@
+message_id,timestamp,source_type,text,text_origin,urgency_label,risk_factor,trade_lane,linked_node_ids,entities_json,label_origin,template_id,split,scenario_id
+M000001,2026-01-06T04:00:00Z,PORT_AUTHORITY,Port of LA/LB: berth 4 closed for 36 hours after crane failure. All arrivals held.,TEMPLATE_SYNTH,URGENT,EQUIPMENT,PORT_US_LAX>PORT_US_LGB,PORT_US_LAX|PORT_US_LGB,,TEMPLATE_SYNTH,T014,train,NOMINAL
+M000002,2026-01-07T09:30:00Z,CARRIER_ADVISORY,MSC reminder: updated peak season surcharge applies from next quarter.,TEMPLATE_SYNTH,ROUTINE,NONE,,,,TEMPLATE_SYNTH,T003,train,NOMINAL
+M000003,2026-01-10T13:15:00Z,CUSTOMS_NOTICE,CBP exam backlog at Savannah: expect 2-3 day customs holds on selected FCL.,REAL,WATCH,CUSTOMS,,PORT_US_SAV,,HUMAN_GOLD,,val,NOMINAL
+M000004,2026-01-12T21:00:00Z,FORWARDER_TICKET,"Container MSKU1000022 rolled at Ningbo, new ETA LGB +5 days. No delay to rail ramp.",TEMPLATE_SYNTH,WATCH,CONGESTION,PORT_CN_NGB>PORT_US_LGB,PORT_CN_NGB|PORT_US_LGB,,WEAK_RULE,T021,test,NOMINAL

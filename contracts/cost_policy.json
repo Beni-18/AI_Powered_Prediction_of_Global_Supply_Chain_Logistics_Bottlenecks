@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "status": "PROPOSED - this answers the problem statement's Stage 01 Team Huddle (acceptable false-alarm threshold). Ratify on Day 1 and record in docs/decisions/.",
+  "unit": "relative cost units (1.0 = cost of one unnecessary emergency reroute escalation)",
+  "cost_matrix_rows_true_cols_pred": {
+    "classes": ["ON_TIME", "AT_RISK", "CRITICAL_DELAY"],
+    "ON_TIME":        [0.0, 0.3, 1.0],
+    "AT_RISK":        [2.0, 0.0, 0.5],
+    "CRITICAL_DELAY": [10.0, 3.0, 0.0]
+  },
+  "reading_guide": "Row = what really happened, column = what we predicted. Example: truth CRITICAL_DELAY but we said ON_TIME costs 10 units (missed bottleneck). Truth ON_TIME but we said CRITICAL_DELAY costs 1 unit (wasted emergency reroute).",
+  "sensitivity_grid": {
+    "missed_critical_cost": [3, 5, 10, 20, 40],
+    "false_alarm_cost": [1.0]
+  },
+  "operating_point_rule": "Choose the decision threshold on the VALIDATION split by minimising expected cost; report the TEST result at that frozen threshold. Never tune a threshold on the test split.",
+  "alert_budget": {
+    "max_false_alarms_per_100_alerts": 40,
+    "note": "Soft ceiling used to discuss the trade-off in debate. Evaluation Engineer reports where each model sits relative to it."
+  }
+}

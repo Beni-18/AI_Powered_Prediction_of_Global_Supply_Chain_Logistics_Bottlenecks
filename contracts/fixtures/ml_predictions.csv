@@ -1,0 +1,7 @@
+record_id,split,y_true,y_pred,p_on_time,p_at_risk,p_critical,risk_score,anomaly_score,model_name,model_version
+R000003,val,CRITICAL_DELAY,CRITICAL_DELAY,0.05,0.15,0.8,0.875,0.7,xgboost,v0
+R000005,test,AT_RISK,AT_RISK,0.2,0.6,0.2,0.5,0.7,xgboost,v0
+R000006,test,CRITICAL_DELAY,CRITICAL_DELAY,0.02,0.18,0.8,0.89,0.7,xgboost,v0
+R000003,val,CRITICAL_DELAY,CRITICAL_DELAY,0.05,0.15,0.8,0.875,0.7,rule_dwell24,v0
+R000005,test,AT_RISK,AT_RISK,0.2,0.6,0.2,0.5,0.7,rule_dwell24,v0
+R000006,test,CRITICAL_DELAY,CRITICAL_DELAY,0.02,0.18,0.8,0.89,0.7,rule_dwell24,v0

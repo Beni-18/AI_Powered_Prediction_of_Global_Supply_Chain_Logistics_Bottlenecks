@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "status": "PROPOSED - ratify at the Day 1 Team Huddle, then FROZEN (change = team vote + docs/decisions entry)",
+  "why_this_exists": "Labels must describe what HAPPENED to a shipment (the realised outcome), never be a formula of the input columns. If a label is a rule of the features, any model scores ~100% and the number means nothing.",
+  "target_column": "delay_status",
+  "basis_column": "realized_delay_hours",
+  "classes": ["ON_TIME", "AT_RISK", "CRITICAL_DELAY"],
+  "thresholds_hours": {
+    "ON_TIME_below": 6,
+    "AT_RISK_below": 24,
+    "CRITICAL_DELAY_at_or_above": 24
+  },
+  "class_order_for_metrics": ["ON_TIME", "AT_RISK", "CRITICAL_DELAY"],
+  "positive_class_for_alerts": "CRITICAL_DELAY",
+  "split_policy": {
+    "method": "chronological",
+    "train_fraction": 0.70,
+    "val_fraction": 0.15,
+    "test_fraction": 0.15,
+    "purge_gap_hours": 168,
+    "group_by": "shipment_id",
+    "assigned_by": "Stage01_ML/01_data_engineer.py (Data Engineer) - ONE place only, never re-split elsewhere"
+  },
+  "seed": 42
+}

@@ -1,0 +1,17 @@
+{
+  "name": "slm_pairs",
+  "version": "1.0",
+  "description": "Training/eval pairs for the small language model. input_trace = compact multi-shipment alert text; target_summary = exactly two sentences. source_facts_json holds the ground-truth facts so Evaluation can check faithfulness automatically.",
+  "primary_key": ["pair_id"],
+  "min_rows": 1,
+  "columns": [
+    {"name": "pair_id", "dtype": "string", "unique": true},
+    {"name": "input_trace", "dtype": "string"},
+    {"name": "target_summary", "dtype": "string"},
+    {"name": "n_shipments", "dtype": "int", "min": 1, "max": 200},
+    {"name": "source_facts_json", "dtype": "string", "note": "JSON: {worst_node, n_critical, n_at_risk, max_dwell_hours, main_cause, nodes:[...], numbers:[...]}"},
+    {"name": "summary_origin", "dtype": "string", "allowed": ["HUMAN", "TEMPLATE_VARIED", "TEACHER_LLM_REVIEWED"]},
+    {"name": "split", "dtype": "string", "allowed": ["train", "val", "test"]},
+    {"name": "scenario_id", "dtype": "string", "pattern": "NOMINAL|S[0-9]{2}|WILDCARD"}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "slm_generations",
+  "version": "1.0",
+  "description": "Generated summaries plus the cost of producing them. Written by Stage04_SLM/03_slm_engineer.py to Stage04_SLM/predictions/slm_generations.csv. One row per (pair, system). Include the template and base_prompt systems so Evaluation can show what fine-tuning bought us.",
+  "primary_key": ["pair_id", "system"],
+  "min_rows": 1,
+  "columns": [
+    {"name": "pair_id", "dtype": "string"},
+    {"name": "split", "dtype": "string", "allowed": ["train", "val", "test"]},
+    {"name": "system", "dtype": "string", "allowed": ["template", "base_prompt", "lora_ft", "lora_ft_int8", "cloud_ref"]},
+    {"name": "generated_summary", "dtype": "string"},
+    {"name": "latency_ms", "dtype": "float", "min": 0, "note": "Wall-clock for ONE brief, batch size 1, model already loaded (warm). Cold-start is measured separately."},
+    {"name": "tokens_out", "dtype": "int", "min": 0},
+    {"name": "peak_ram_mb", "dtype": "float", "min": 0, "nullable": true, "required": false},
+    {"name": "device", "dtype": "string", "allowed": ["cpu", "cuda", "mps", "api"]},
+    {"name": "model_name", "dtype": "string"}
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "ml_predictions",
+  "version": "1.0",
+  "description": "THE baton between Role 1 and Role 4 on Day 1. Written by Stage01_ML/03_ml_engineer.py to Stage01_ML/predictions/ml_predictions.csv. One row per (record, model). Include the baseline models too (rule, logistic) so Evaluation can compare without asking.",
+  "primary_key": ["record_id", "model_name"],
+  "sum_to_one": [["p_on_time", "p_at_risk", "p_critical"]],
+  "min_rows": 1,
+  "columns": [
+    {"name": "record_id", "dtype": "string"},
+    {"name": "split", "dtype": "string", "allowed": ["train", "val", "test"]},
+    {"name": "y_true", "dtype": "string", "allowed": ["ON_TIME", "AT_RISK", "CRITICAL_DELAY"]},
+    {"name": "y_pred", "dtype": "string", "allowed": ["ON_TIME", "AT_RISK", "CRITICAL_DELAY"], "note": "Argmax of the probabilities. Evaluation applies cost-based thresholds on top."},
+    {"name": "p_on_time", "dtype": "float", "min": 0, "max": 1},
+    {"name": "p_at_risk", "dtype": "float", "min": 0, "max": 1},
+    {"name": "p_critical", "dtype": "float", "min": 0, "max": 1},
+    {"name": "risk_score", "dtype": "float", "min": 0, "max": 1, "note": "Single 0-1 number for ranking; normally p_critical + 0.5 * p_at_risk."},
+    {"name": "anomaly_score", "dtype": "float", "nullable": true, "required": false, "note": "Higher = more anomalous (Isolation Forest / One-Class SVM)."},
+    {"name": "model_name", "dtype": "string"},
+    {"name": "model_version", "dtype": "string"}
+  ]
+}

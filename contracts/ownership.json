@@ -1,0 +1,84 @@
+{
+  "version": "1.0",
+  "explanation": "Machine-readable file ownership. Every commit subject starts with a TYPE (ml, eda, data, integ, eval, docs, chore, ci). scripts/check_ownership.py checks that a commit only touches paths allowed for its TYPE. A commit that must cross lanes needs a 'Cross-role: <who agreed and why>' line in its body. Glob rules: '*' = anything except '/', '**' = anything including '/', '?' = one character except '/'.",
+  "types": {
+    "data": {
+      "role": "Role 3 - Data & Integration Engineer (data hat)",
+      "paths": [
+        "Stage0?_*/01_data_engineer.py",
+        "Stage0?_*/data/**",
+        "Stage0?_*/annotation/**",
+        "Stage0?_*/HANDOFF/01_*.md",
+        "data/**",
+        "scripts/fetch_*.py",
+        "common/dataio/**",
+        "tests/data/**",
+        "contracts/**"
+      ]
+    },
+    "eda": {
+      "role": "Role 2 - EDA Engineer",
+      "paths": [
+        "Stage0?_*/02_eda_engineer.py",
+        "Stage0?_*/reports/eda_*",
+        "Stage0?_*/HANDOFF/02_*.md",
+        "Stage0?_*/scenarios/**",
+        "common/edakit/**",
+        "tests/eda/**",
+        "notebooks/eda/**",
+        "contracts/jargon_glossary.csv"
+      ]
+    },
+    "ml": {
+      "role": "Role 1 - ML Engineer",
+      "paths": [
+        "Stage0?_*/03_*_engineer.py",
+        "Stage0?_*/artifacts/**",
+        "Stage0?_*/predictions/**",
+        "Stage0?_*/HANDOFF/03_*.md",
+        "Stage0?_*/requirements.txt",
+        "common/modelkit/**",
+        "tests/ml/**",
+        "notebooks/ml/**"
+      ]
+    },
+    "eval": {
+      "role": "Role 4 - Evaluation Engineer",
+      "paths": [
+        "Stage0?_*/04_evaluation_engineer.py",
+        "Stage0?_*/reports/eval_*",
+        "Stage0?_*/HANDOFF/04_*.md",
+        "common/evalkit/**",
+        "claims/**",
+        "tests/eval/**",
+        "notebooks/eval/**"
+      ]
+    },
+    "integ": {
+      "role": "Role 3 - Data & Integration Engineer (integration hat)",
+      "paths": [
+        "Stage0?_*/05_integration_engineer.py",
+        "Stage0?_*/integration/**",
+        "Stage0?_*/reports/integ_*",
+        "Stage0?_*/HANDOFF/05_*.md",
+        "app.py",
+        "pages/**",
+        "run_pipeline.py",
+        "requirements.txt",
+        "requirements-dev.txt",
+        ".streamlit/**",
+        "common/integration/**",
+        "tests/integ/**"
+      ]
+    }
+  },
+  "shared_types": {
+    "docs": "Only documentation: *.md files and docs/**, claims/** is NOT included (that is eval). Anyone may use this type for markdown-only commits.",
+    "chore": "Repo housekeeping (.gitignore, hooks, scripts). Needs a note in the PR; keep these rare.",
+    "ci": "Anything under .github/ or .githooks/. Role 3 only by convention."
+  },
+  "docs_paths": ["docs/**", "*.md", "Stage0?_*/README.md", "_reference/README.md", "docs/decisions/**"],
+  "chore_paths": [".gitignore", ".gitattributes", ".env.example", "scripts/**", "common/*.py", "pyproject.toml", "tests/*.py", "Stage0?_*/*/.gitkeep"],
+  "ci_paths": [".github/**", ".githooks/**", ".claude/**", ".cursor/**", ".agent/**"],
+  "always_allowed_types": ["merge", "revert"]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "telemetry",
+  "version": "1.0",
+  "description": "Shipment-level observations (one row = one shipment snapshot). Produced by Stage01_ML/01_data_engineer.py as Stage01_ML/data/prepared_dataset.csv. Consumed by Roles 1, 2, 4 on Day 1 and by later stages for calibration.",
+  "primary_key": ["record_id"],
+  "min_rows": 1,
+  "columns": [
+    {"name": "record_id", "dtype": "string", "unique": true, "pattern": "[A-Za-z0-9_-]+"},
+    {"name": "timestamp", "dtype": "datetime", "note": "ISO-8601, UTC"},
+    {"name": "shipment_id", "dtype": "string"},
+    {"name": "container_id", "dtype": "string"},
+    {"name": "carrier_code", "dtype": "string", "allowed": ["MSC", "MSK", "CMA", "COSCO", "HAPAG", "ONE", "EVERGREEN", "HMM", "YANGMING", "ZIM"]},
+    {"name": "origin_port", "dtype": "string", "fk": "nodes"},
+    {"name": "destination_port", "dtype": "string", "fk": "nodes"},
+    {"name": "current_node_id", "dtype": "string", "fk": "nodes"},
+    {"name": "dwell_time_hours", "dtype": "float", "min": 0, "max": 400},
+    {"name": "throughput_teu_per_hr", "dtype": "float", "min": 0, "max": 2500},
+    {"name": "capacity_utilization_pct", "dtype": "float", "min": 0, "max": 150, "note": "Values above 100 are legitimate overload, not errors. Flag them, never blank them."},
+    {"name": "customs_hold_hours", "dtype": "float", "min": 0, "max": 240},
+    {"name": "weather_severity_index", "dtype": "float", "min": 0, "max": 10},
+    {"name": "labor_deficit_ratio", "dtype": "float", "min": 0, "max": 1},
+    {"name": "equipment_availability_pct", "dtype": "float", "min": 0, "max": 100},
+    {"name": "historical_delay_rate", "dtype": "float", "min": 0, "max": 1},
+    {"name": "priority_tier", "dtype": "string", "allowed": ["STANDARD", "EXPEDITED", "CRITICAL_MEDICAL", "PERISHABLE_COLD_CHAIN"]},
+    {"name": "realized_delay_hours", "dtype": "float", "min": 0, "max": 2000, "note": "OUTCOME. Forbidden as a feature. Label basis."},
+    {"name": "delay_status", "dtype": "string", "allowed": ["ON_TIME", "AT_RISK", "CRITICAL_DELAY"], "note": "Derived from realized_delay_hours using contracts/label_policy.json"},
+    {"name": "split", "dtype": "string", "allowed": ["train", "val", "test"]},
+    {"name": "data_origin", "dtype": "string", "allowed": ["REAL", "REAL_DERIVED", "SYNTHETIC_CALIBRATED", "SYNTHETIC_STRESS"]},
+    {"name": "is_synthetic", "dtype": "bool"},
+    {"name": "scenario_id", "dtype": "string", "pattern": "NOMINAL|S[0-9]{2}|WILDCARD"}
+  ]
+}

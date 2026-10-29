@@ -1,0 +1,23 @@
+{
+  "name": "incident_messages",
+  "version": "1.0",
+  "description": "Advisories, customs notices and forwarder tickets. Produced by Stage03_NLP/01_data_engineer.py as Stage03_NLP/data/incident_messages.csv. The text column keeps ORIGINAL casing (NER needs it); lower-casing happens inside model code only.",
+  "primary_key": ["message_id"],
+  "min_rows": 1,
+  "columns": [
+    {"name": "message_id", "dtype": "string", "unique": true},
+    {"name": "timestamp", "dtype": "datetime"},
+    {"name": "source_type", "dtype": "string", "allowed": ["CARRIER_ADVISORY", "CUSTOMS_NOTICE", "FORWARDER_TICKET", "PORT_AUTHORITY"]},
+    {"name": "text", "dtype": "string"},
+    {"name": "text_origin", "dtype": "string", "allowed": ["REAL", "TEMPLATE_SYNTH", "LLM_PARAPHRASE"]},
+    {"name": "urgency_label", "dtype": "string", "nullable": true, "allowed": ["ROUTINE", "WATCH", "URGENT"]},
+    {"name": "risk_factor", "dtype": "string", "nullable": true, "allowed": ["CUSTOMS", "WEATHER", "LABOR", "EQUIPMENT", "CONGESTION", "REGULATORY", "SECURITY", "NONE"]},
+    {"name": "trade_lane", "dtype": "string", "nullable": true, "required": false, "pattern": "[A-Z0-9_]+>[A-Z0-9_]+"},
+    {"name": "linked_node_ids", "dtype": "string", "nullable": true, "required": false, "note": "Pipe separated node_ids, e.g. PORT_US_LAX|PORT_US_LGB"},
+    {"name": "entities_json", "dtype": "string", "nullable": true, "required": false, "note": "JSON list of {start,end,label,text,node_id}; labels: PORT, CARRIER, DISRUPTION_TYPE, MITIGATION_ACTION"},
+    {"name": "label_origin", "dtype": "string", "allowed": ["HUMAN_GOLD", "WEAK_RULE", "TEMPLATE_SYNTH", "REAL_UNLABELLED"]},
+    {"name": "template_id", "dtype": "string", "nullable": true, "required": false},
+    {"name": "split", "dtype": "string", "allowed": ["train", "val", "test"]},
+    {"name": "scenario_id", "dtype": "string", "pattern": "NOMINAL|S[0-9]{2}|WILDCARD"}
+  ]
+}

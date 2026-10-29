@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "applies_to": "Stage 01 shipment-level classifier (and any later model that scores shipment rows)",
+  "prediction_moment": "A row is a snapshot of a shipment at its observation timestamp. A feature is legal only if its value was knowable AT that timestamp.",
+  "allowed_base_features": [
+    "dwell_time_hours",
+    "throughput_teu_per_hr",
+    "capacity_utilization_pct",
+    "customs_hold_hours",
+    "weather_severity_index",
+    "labor_deficit_ratio",
+    "equipment_availability_pct",
+    "historical_delay_rate",
+    "priority_tier",
+    "carrier_code",
+    "origin_port",
+    "destination_port",
+    "current_node_id"
+  ],
+  "allowed_derived_prefixes": ["cal_", "lag_", "roll_", "eng_"],
+  "derived_feature_rules": [
+    "cal_ = calendar features from the timestamp (hour, weekday, month).",
+    "lag_ and roll_ = built ONLY from rows with an EARLIER timestamp than the current row (use shift/rolling with closed='left' or equivalent).",
+    "eng_ = arithmetic combinations of allowed columns of the SAME row (ratios, products, logs)."
+  ],
+  "forbidden_features": [
+    "realized_delay_hours",
+    "delay_status",
+    "record_id",
+    "shipment_id",
+    "container_id",
+    "scenario_id",
+    "data_origin",
+    "is_synthetic",
+    "split",
+    "timestamp"
+  ],
+  "forbidden_reason": "Target/outcome columns leak the answer. Identifier and bookkeeping columns let a model memorise rows instead of learning logistics. The raw timestamp is replaced by cal_ features."
+}

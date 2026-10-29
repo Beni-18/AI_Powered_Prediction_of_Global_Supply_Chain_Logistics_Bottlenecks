@@ -1,0 +1,20 @@
+{
+  "name": "dl_forecasts",
+  "version": "1.0",
+  "description": "LONG format forecasts (one row per node x origin time x horizon x target x model). Written by Stage02_DL/03_dl_engineer.py to Stage02_DL/predictions/dl_forecasts.csv. Baselines (persistence, seasonal_naive, xgb_lag) go in the same file with their own model_name so Evaluation can compute skill scores.",
+  "primary_key": ["node_id", "origin_ts", "horizon_h", "target", "model_name"],
+  "min_rows": 1,
+  "columns": [
+    {"name": "node_id", "dtype": "string", "fk": "nodes"},
+    {"name": "origin_ts", "dtype": "datetime", "note": "The last hour the model was allowed to see."},
+    {"name": "horizon_h", "dtype": "int", "min": 1, "max": 168},
+    {"name": "target", "dtype": "string", "allowed": ["dwell", "throughput"]},
+    {"name": "split", "dtype": "string", "allowed": ["train", "val", "test"]},
+    {"name": "y_true", "dtype": "float"},
+    {"name": "y_pred", "dtype": "float"},
+    {"name": "y_lo", "dtype": "float", "nullable": true, "required": false, "note": "Lower bound of the prediction interval (e.g. 10th percentile)."},
+    {"name": "y_hi", "dtype": "float", "nullable": true, "required": false, "note": "Upper bound of the prediction interval (e.g. 90th percentile)."},
+    {"name": "model_name", "dtype": "string"},
+    {"name": "model_version", "dtype": "string"}
+  ]
+}

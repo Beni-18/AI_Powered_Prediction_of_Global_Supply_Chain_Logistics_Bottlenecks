@@ -1,0 +1,4 @@
+scenario_id,stage,metric,value,n,ci_lo,ci_hi,baseline_value,generator
+S06,ML,detection_rate,0.82,120,0.7699999999999999,0.87,0.91,CVAE
+S06,DL,lead_time_h,14.0,120,13.95,14.0,18.0,CVAE
+WILDCARD,NLP,f1,0.64,60,0.59,0.6900000000000001,0.78,CVAE

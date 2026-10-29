@@ -1,0 +1,22 @@
+{
+  "name": "nlp_predictions",
+  "version": "1.0",
+  "description": "Message-level classifier output. Written by Stage03_NLP/03_nlp_engineer.py to Stage03_NLP/predictions/nlp_predictions.csv. Entity predictions go to Stage03_NLP/predictions/nlp_entities_pred.jsonl (one JSON object per line: {message_id, entities:[{start,end,label,text,node_id}]}).",
+  "primary_key": ["message_id", "model_name"],
+  "sum_to_one": [["p_routine", "p_watch", "p_urgent"]],
+  "min_rows": 1,
+  "columns": [
+    {"name": "message_id", "dtype": "string"},
+    {"name": "split", "dtype": "string", "allowed": ["train", "val", "test"]},
+    {"name": "y_true_urgency", "dtype": "string", "allowed": ["ROUTINE", "WATCH", "URGENT"]},
+    {"name": "y_pred_urgency", "dtype": "string", "allowed": ["ROUTINE", "WATCH", "URGENT"]},
+    {"name": "p_routine", "dtype": "float", "min": 0, "max": 1},
+    {"name": "p_watch", "dtype": "float", "min": 0, "max": 1},
+    {"name": "p_urgent", "dtype": "float", "min": 0, "max": 1},
+    {"name": "y_true_risk", "dtype": "string", "allowed": ["CUSTOMS", "WEATHER", "LABOR", "EQUIPMENT", "CONGESTION", "REGULATORY", "SECURITY", "NONE"]},
+    {"name": "y_pred_risk", "dtype": "string", "allowed": ["CUSTOMS", "WEATHER", "LABOR", "EQUIPMENT", "CONGESTION", "REGULATORY", "SECURITY", "NONE"]},
+    {"name": "pred_node_ids", "dtype": "string", "nullable": true, "required": false, "note": "Pipe separated node_ids linked by the NER + alias resolver."},
+    {"name": "model_name", "dtype": "string"},
+    {"name": "model_version", "dtype": "string"}
+  ]
+}

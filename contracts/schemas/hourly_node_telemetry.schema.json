@@ -1,0 +1,24 @@
+{
+  "name": "hourly_node_telemetry",
+  "version": "1.0",
+  "description": "Regular hourly grid: one row per node per hour, NO missing hours. Produced by Stage02_DL/01_data_engineer.py as Stage02_DL/data/hourly_node_telemetry.csv. Consumed by the DL model, EDA, Evaluation, and (as the baseline) by Stage 5.",
+  "primary_key": ["hour_ts", "node_id"],
+  "min_rows": 1,
+  "columns": [
+    {"name": "hour_ts", "dtype": "datetime", "note": "Top of the hour, ISO-8601, UTC"},
+    {"name": "node_id", "dtype": "string", "fk": "nodes"},
+    {"name": "avg_dwell_time_hours", "dtype": "float", "min": 0, "max": 400},
+    {"name": "throughput_teu_per_hr", "dtype": "float", "min": 0, "max": 5000, "note": "For CHOKEPOINT nodes this is TEU-equivalent derived from vessel transits; document the conversion in the HANDOFF file."},
+    {"name": "capacity_utilization_pct", "dtype": "float", "min": 0, "max": 150},
+    {"name": "customs_hold_hours", "dtype": "float", "min": 0, "max": 240},
+    {"name": "weather_severity_index", "dtype": "float", "min": 0, "max": 10},
+    {"name": "labor_deficit_ratio", "dtype": "float", "min": 0, "max": 1},
+    {"name": "equipment_availability_pct", "dtype": "float", "min": 0, "max": 100},
+    {"name": "inventory_level_teu", "dtype": "float", "min": 0, "max": 500000},
+    {"name": "vessels_waiting", "dtype": "int", "min": 0, "max": 500, "required": false},
+    {"name": "n_records", "dtype": "int", "min": 0},
+    {"name": "is_imputed", "dtype": "bool", "note": "True when the hour had no raw records and values were filled."},
+    {"name": "data_origin", "dtype": "string", "allowed": ["REAL", "REAL_DERIVED", "SYNTHETIC_CALIBRATED", "SYNTHETIC_STRESS"]},
+    {"name": "scenario_id", "dtype": "string", "pattern": "NOMINAL|S[0-9]{2}|WILDCARD"}
+  ]
+}

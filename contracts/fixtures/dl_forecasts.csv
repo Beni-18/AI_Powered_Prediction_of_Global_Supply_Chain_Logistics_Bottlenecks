@@ -1,0 +1,5 @@
+node_id,origin_ts,horizon_h,target,split,y_true,y_pred,y_lo,y_hi,model_name,model_version
+PORT_US_LAX,2026-02-20T00:00:00Z,1,dwell,test,31.0,30.0,27.0,33.0,lstm_gnn,v0
+PORT_US_LAX,2026-02-20T00:00:00Z,24,dwell,test,36.0,35.0,32.0,38.0,lstm_gnn,v0
+PORT_US_LAX,2026-02-20T00:00:00Z,1,dwell,test,31.0,27.0,24.0,30.0,persistence,v0
+PORT_US_LAX,2026-02-20T00:00:00Z,24,dwell,test,36.0,32.0,29.0,35.0,persistence,v0

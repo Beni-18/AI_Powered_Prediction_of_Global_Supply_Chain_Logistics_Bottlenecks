@@ -1,0 +1,4 @@
+message_id,split,y_true_urgency,y_pred_urgency,p_routine,p_watch,p_urgent,y_true_risk,y_pred_risk,pred_node_ids,model_name,model_version
+M000001,train,URGENT,URGENT,0.02,0.08,0.9,EQUIPMENT,EQUIPMENT,PORT_US_LAX|PORT_US_LGB,tfidf_lr,v0
+M000003,val,WATCH,WATCH,0.1,0.75,0.15,CUSTOMS,CUSTOMS,PORT_US_SAV,tfidf_lr,v0
+M000004,test,WATCH,ROUTINE,0.55,0.4,0.05,CONGESTION,NONE,PORT_CN_NGB,tfidf_lr,v0

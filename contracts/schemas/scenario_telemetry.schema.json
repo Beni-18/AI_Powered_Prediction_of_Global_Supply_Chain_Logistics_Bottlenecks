@@ -1,0 +1,13 @@
+{
+  "name": "scenario_telemetry",
+  "version": "1.0",
+  "extends": "hourly_node_telemetry",
+  "description": "Synthetic disruption streams from the Stage 5 generator. Same columns as hourly_node_telemetry, plus ground-truth disruption markers so the stress test can compute detection rate and lead time. Written to Stage05_GenAI/predictions/scenario_telemetry.csv by the GenAI pipeline (Role 1) after Role 3 publishes the baseline profiles.",
+  "primary_key": ["scenario_id", "hour_ts", "node_id"],
+  "columns": [
+    {"name": "scenario_id", "dtype": "string", "pattern": "S[0-9]{2}|WILDCARD"},
+    {"name": "severity", "dtype": "float", "min": 0, "max": 1},
+    {"name": "is_disrupted_hour", "dtype": "bool", "note": "Ground truth: True while the injected disruption is active at this node."},
+    {"name": "generator", "dtype": "string", "allowed": ["CVAE", "GAN", "DIFFUSION", "SIMULATOR", "REAL_REPLAY"]}
+  ]
+}

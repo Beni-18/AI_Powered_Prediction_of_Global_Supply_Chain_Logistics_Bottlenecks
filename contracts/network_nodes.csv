@@ -1,0 +1,28 @@
+node_id,node_type,display_name,country_iso2,unlocode,lat,lon,region,aliases
+PORT_CN_SHA,PORT,Shanghai,CN,CNSHA,31.23,121.47,East Asia,SHA|Shanghai|Yangshan|Waigaoqiao|CNSHA|Port of Shanghai
+PORT_CN_NGB,PORT,Ningbo-Zhoushan,CN,CNNGB,29.87,121.55,East Asia,NGB|Ningbo|Zhoushan|Beilun|CNNGB
+PORT_CN_YTN,PORT,Yantian (Shenzhen),CN,CNYTN,22.57,114.28,East Asia,YTN|Yantian|Shenzhen|Shekou|Chiwan|CNYTN|SZX
+PORT_KR_PUS,PORT,Busan,KR,KRPUS,35.1,129.04,East Asia,PUS|Busan|Pusan|KRPUS
+PORT_SG_SIN,PORT,Singapore,SG,SGSIN,1.26,103.84,Southeast Asia,SIN|Singapore|PSA|Tanjong Pagar|Pasir Panjang|SGSIN
+PORT_MY_PKG,PORT,Port Klang,MY,MYPKG,3.0,101.39,Southeast Asia,PKG|Port Klang|Klang|Westports|Northport|MYPKG
+PORT_LK_CMB,PORT,Colombo,LK,LKCMB,6.94,79.85,South Asia,CMB|Colombo|CICT|SAGT|LKCMB
+PORT_IN_NSA,PORT,Nhava Sheva (JNPT),IN,INNSA,18.95,72.95,South Asia,NSA|JNPT|Nhava Sheva|Jawaharlal Nehru Port|INNSA
+PORT_IN_MAA,PORT,Chennai,IN,INMAA,13.09,80.3,South Asia,MAA|Chennai|Madras|Chennai Port|INMAA
+PORT_AE_JEA,PORT,Jebel Ali,AE,AEJEA,25.01,55.06,Middle East,JEA|Jebel Ali|DP World Dubai|Dubai|AEJEA
+PORT_NL_RTM,PORT,Rotterdam,NL,NLRTM,51.95,4.14,Europe,RTM|Rotterdam|Maasvlakte|ECT|NLRTM
+PORT_BE_ANR,PORT,Antwerp-Bruges,BE,BEANR,51.27,4.35,Europe,ANR|Antwerp|Antwerpen|Anvers|BEANR
+PORT_DE_HAM,PORT,Hamburg,DE,DEHAM,53.54,9.97,Europe,HAM|Hamburg|HHLA|Waltershof|DEHAM
+PORT_US_LAX,PORT,Los Angeles,US,USLAX,33.73,-118.26,North America West,LAX|Los Angeles|Port of LA|POLA|San Pedro|USLAX
+PORT_US_LGB,PORT,Long Beach,US,USLGB,33.75,-118.21,North America West,LGB|Long Beach|POLB|Port of Long Beach|USLGB
+PORT_US_OAK,PORT,Oakland,US,USOAK,37.8,-122.32,North America West,OAK|Oakland|Port of Oakland|USOAK
+PORT_US_NYC,PORT,New York / New Jersey,US,USNYC,40.67,-74.04,North America East,NYNJ|NYC|New York|New Jersey|Newark|Port Newark|Elizabeth|Bayonne|USNYC
+PORT_US_SAV,PORT,Savannah,US,USSAV,32.08,-81.09,North America East,SAV|Savannah|GPA|Garden City|USSAV
+RAIL_US_CHI_BNSF,RAIL_HUB,Chicago (BNSF intermodal),US,,41.8,-87.7,North America Midwest,CHI|Chicago|BNSF|BNSF Chicago|Logistics Park Chicago|Cicero|Willow Springs
+DC_US_MW_JOLIET,DC,Joliet Distribution Hub,US,,41.52,-88.08,North America Midwest,JOL|Joliet|Elwood|Joliet DC
+DC_EU_VENLO,DC,Venlo Distribution Hub,NL,,51.37,6.17,Europe,Venlo|VNO|Venlo DC|Trade Port Noord
+CHOKE_SUEZ,CHOKEPOINT,Suez Canal,EG,,30.46,32.34,Middle East/Africa,Suez|Suez Canal|SCA|Port Said|Ismailia
+CHOKE_PANAMA,CHOKEPOINT,Panama Canal,PA,,9.08,-79.68,Central America,Panama|Panama Canal|ACP|Gatun|Neopanamax
+CHOKE_MALACCA,CHOKEPOINT,Strait of Malacca,MY,,2.5,101.8,Southeast Asia,Malacca|Strait of Malacca|Straits of Malacca|Melaka Strait
+CHOKE_HORMUZ,CHOKEPOINT,Strait of Hormuz,OM,,26.57,56.25,Middle East,Hormuz|Strait of Hormuz|Straits of Hormuz
+CHOKE_BAB_EL_MANDEB,CHOKEPOINT,Bab el-Mandeb Strait,YE,,12.58,43.33,Middle East/Africa,Bab el-Mandeb|Bab al-Mandab|Bab el Mandeb
+CHOKE_CAPE_GOOD_HOPE,CHOKEPOINT,Cape of Good Hope route,ZA,,-34.36,18.47,Africa,Cape of Good Hope|Cape routing|Cape route|the Cape

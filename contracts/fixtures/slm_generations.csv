@@ -1,0 +1,5 @@
+pair_id,split,system,generated_summary,latency_ms,tokens_out,peak_ram_mb,device,model_name
+P0002,val,template,New York / New Jersey shows 2 on-time shipments. No bottleneck is active.,2.0,18,620.0,cpu,flan-t5-small
+P0003,test,template,New York / New Jersey shows 2 on-time shipments. No bottleneck is active.,2.0,18,620.0,cpu,flan-t5-small
+P0002,val,lora_ft,New York / New Jersey shows 2 on-time shipments. No bottleneck is active.,1850.0,18,620.0,cpu,flan-t5-small
+P0003,test,lora_ft,New York / New Jersey shows 2 on-time shipments. No bottleneck is active.,1850.0,18,620.0,cpu,flan-t5-small
