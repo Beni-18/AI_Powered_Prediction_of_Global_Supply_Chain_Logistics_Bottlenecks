@@ -1,0 +1,27 @@
+# Copy to .github/CODEOWNERS after replacing the @usernames with the real GitHub usernames.
+# GitHub then auto-requests the right reviewer. Lanes mirror contracts/ownership.json.
+#
+# Role 1 ML Engineer            -> @ML_USERNAME
+# Role 2 EDA Engineer           -> @EDA_USERNAME
+# Role 3 Data & Integration     -> @DATA_INTEG_USERNAME
+# Role 4 Evaluation Engineer    -> @EVAL_USERNAME
+
+/Stage0*/01_data_engineer.py            @DATA_INTEG_USERNAME
+/Stage0*/data/                          @DATA_INTEG_USERNAME
+/contracts/                             @DATA_INTEG_USERNAME @EVAL_USERNAME
+/Stage0*/02_eda_engineer.py             @EDA_USERNAME
+/Stage0*/reports/eda_*                  @EDA_USERNAME
+/common/edakit/                         @EDA_USERNAME
+/Stage0*/03_*_engineer.py               @ML_USERNAME
+/Stage0*/artifacts/                     @ML_USERNAME
+/Stage0*/predictions/                   @ML_USERNAME
+/common/modelkit/                       @ML_USERNAME
+/Stage0*/04_evaluation_engineer.py      @EVAL_USERNAME
+/Stage0*/reports/eval_*                 @EVAL_USERNAME
+/common/evalkit/                        @EVAL_USERNAME
+/claims/                                @EVAL_USERNAME
+/Stage0*/05_integration_engineer.py     @DATA_INTEG_USERNAME
+/app.py                                 @DATA_INTEG_USERNAME
+/run_pipeline.py                        @DATA_INTEG_USERNAME
+/.github/                               @DATA_INTEG_USERNAME
+/.githooks/                             @DATA_INTEG_USERNAME
