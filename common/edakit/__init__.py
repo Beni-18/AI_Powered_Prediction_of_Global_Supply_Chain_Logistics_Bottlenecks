@@ -10,16 +10,32 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple, Union
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy import stats
-from sklearn.metrics import roc_auc_score
+
+try:
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+except ImportError:  # pragma: no cover
+    mpl = None
+    plt = None
+
+try:
+    from scipy import stats
+except ImportError:  # pragma: no cover
+    stats = None
+
+try:
+    from sklearn.metrics import roc_auc_score
+except ImportError:  # pragma: no cover
+    roc_auc_score = None
 
 
 def apply_style() -> None:
     """Set uniform matplotlib and seaborn styling with colour-blind safe palettes."""
+    if plt is None or mpl is None:
+        raise ImportError("matplotlib is required for apply_style(). Install with: pip install matplotlib")
+
     # Use standard sans-serif font family and readable font sizes
     plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
 

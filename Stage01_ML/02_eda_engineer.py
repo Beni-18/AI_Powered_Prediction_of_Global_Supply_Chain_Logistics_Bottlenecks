@@ -14,14 +14,21 @@ from pathlib import Path
 import sys
 from typing import Dict, List, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from sklearn.feature_selection import mutual_info_classif
-from sklearn.metrics import roc_auc_score
-from sklearn.tree import DecisionTreeClassifier
-from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+try:
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    from sklearn.feature_selection import mutual_info_classif
+    from sklearn.metrics import roc_auc_score
+    from sklearn.tree import DecisionTreeClassifier
+    from statsmodels.stats.outliers_influence import variance_inflation_factor
+    HAVE_DEPENDENCIES = True
+    MISSING_DEP_MSG = ""
+except ImportError as err:
+    HAVE_DEPENDENCIES = False
+    MISSING_DEP_MSG = str(err)
 
 # Make "import common" work whether run from root or inside Stage01_ML folder
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -49,6 +56,8 @@ def load_dataset() -> Tuple[pd.DataFrame, str]:
         raw_file = REPO_ROOT / "data" / "raw" / "sim" / "shipment_telemetry_raw.csv.gz"
         if not raw_file.exists():
             raw_file = REPO_ROOT / "data" / "raw" / "sim" / "shipment_telemetry_raw.csv"
+        if not raw_file.exists():
+            return None, "missing"
         df = pd.read_csv(raw_file)
         source = f"raw ({raw_file.name})"
 
@@ -607,7 +616,19 @@ Every finding in this report connects empirical evidence to an explicit modellin
 
 def main() -> int:
     """Execute complete Stage 01 EDA analysis and output all artifacts."""
+    if not HAVE_DEPENDENCIES:
+        print(f"SKIPPED: Missing dependency ({MISSING_DEP_MSG}). Install with: pip install -r requirements.txt")
+        return 3
+
     set_global_seed(42)
+
+    # 1. Load dataset
+    print("[1/7] Loading dataset...")
+    df, data_source = load_dataset()
+    if df is None:
+        print("SKIPPED: Telemetry dataset not found. Build simulator data first.")
+        return 3
+    print(f"      Loaded {len(df):,} rows from {data_source}")
 
     # Prepare output directory: Stage01_ML/reports/
     reports_dir = stage_path(1, "reports")
@@ -616,11 +637,6 @@ def main() -> int:
     print("=" * 60)
     print("STAGE 01: EDA ENGINEER ANALYSIS")
     print("=" * 60)
-
-    # 1. Load dataset
-    print("[1/7] Loading dataset...")
-    df, data_source = load_dataset()
-    print(f"      Loaded {len(df):,} rows from {data_source}")
 
     # 2. Seasonality analysis
     print("[2/7] Analyzing seasonality and temporal profiles...")
