@@ -1,0 +1,13 @@
+# Day 4 extras (install on Day 0 and PRE-DOWNLOAD the model while you have internet).
+torch>=2.1
+transformers>=4.38
+peft>=0.10
+datasets>=2.18
+accelerate>=0.28
+sentencepiece>=0.2
+psutil>=5.9
+rouge-score>=0.1.2
+evaluate>=0.4
+# Optional stretch (fast CPU inference / quantisation):
+# optimum[onnxruntime]>=1.19
+# llama-cpp-python>=0.2.60

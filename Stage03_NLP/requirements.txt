@@ -1,0 +1,9 @@
+# Day 3 extras (install on Day 0).
+spacy>=3.7
+rapidfuzz>=3.5
+seqeval>=1.2
+rank_bm25>=0.2.2
+sentence-transformers>=2.6
+transformers>=4.38
+torch>=2.1
+# After installing spacy run once:  python -m spacy download en_core_web_sm

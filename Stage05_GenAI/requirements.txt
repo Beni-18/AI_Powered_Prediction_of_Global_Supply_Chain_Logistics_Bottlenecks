@@ -1,0 +1,6 @@
+# Day 5 extras (install on Day 0).
+torch>=2.1
+# Used by the realism audit (two-sample tests, distances):
+scipy>=1.10
+# Optional: only if you let a hosted LLM write scenario narratives. The key goes in .env, never in git.
+# openai>=1.30

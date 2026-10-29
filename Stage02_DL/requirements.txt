@@ -1,0 +1,4 @@
+# Day 2 extras (install on Day 0). CPU build of PyTorch is enough; see https://pytorch.org/get-started/locally/
+torch>=2.1
+# Optional, only if you decide to use a graph library instead of the pure-PyTorch dense GCN layer:
+# torch_geometric>=2.5
