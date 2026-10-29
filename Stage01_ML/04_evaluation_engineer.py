@@ -38,8 +38,8 @@ import pandas as pd  # noqa: E402
 
 from common import contracts  # noqa: E402
 from common.evalkit import (  # noqa: E402
-    CLASSES, average_precision, balanced_accuracy, bayes_decision, block_bootstrap_ci, brier, choose_threshold,
-    confusion_counts, cost_vs_threshold, decide_with_threshold, ece, ledger, load_cost_matrix, load_cost_policy,
+    CLASSES, average_precision, balanced_accuracy, bayes_decision, block_bootstrap_ci, choose_threshold,
+    confusion_counts, decide_with_threshold, ece, ledger, load_cost_matrix, load_cost_policy,
     log_loss, macro_f1, multiclass_brier, paired_bootstrap_diff, per_class_prf, reliability_table, roc_auc,
     scaled_cost_matrix,
 )
@@ -86,6 +86,51 @@ def load_predictions(path: Path) -> pd.DataFrame:
     return df.sort_values(["model_name", "record_id"]).reset_index(drop=True)
 
 
+def check_integrity(pred: pd.DataFrame, prepared: pd.DataFrame | None) -> dict:
+    """Make sure the predictions file can be trusted before any number is computed from it.
+
+    Hard errors (the run stops): models scored different rows, the split or label in the file disagrees with
+    the frozen prepared dataset, or records are unknown to it. Warnings: a model skipped some rows, or the
+    y_pred column is not the argmax of the probabilities.
+    """
+    errors, warnings = [], []
+
+    # Every model must have scored exactly the same rows in each split, or comparisons are not like for like.
+    for split, part in pred.groupby("split"):
+        sets = {m: frozenset(g["record_id"]) for m, g in part.groupby("model_name")}
+        reference = max(sets.values(), key=len)
+        for model, ids in sets.items():
+            if ids != reference:
+                errors.append(f"model '{model}' scored a different set of {split} rows ({len(ids)} vs {len(reference)}).")
+
+    if prepared is not None:
+        truth = prepared.drop_duplicates("record_id").set_index("record_id")
+        known = pred["record_id"].isin(truth.index)
+        if not known.all():
+            errors.append(f"{int((~known).sum())} prediction rows have a record_id that is not in the prepared dataset.")
+        joined = pred[known].join(truth[["split", "delay_status"]].rename(columns={"split": "prep_split", "delay_status": "prep_label"}), on="record_id")
+        bad_split = int((joined["split"] != joined["prep_split"]).sum())
+        bad_label = int((joined["y_true"] != joined["prep_label"]).sum())
+        if bad_split:
+            errors.append(f"{bad_split} prediction rows sit in a different split than the frozen prepared dataset (possible re-split or leakage).")
+        if bad_label:
+            errors.append(f"{bad_label} prediction rows have a y_true that differs from delay_status in the prepared dataset.")
+        # Coverage: a model that silently skips hard test rows would look better than it is.
+        for split in ("val", "test"):
+            expected = int((truth["split"] == split).sum())
+            got = pred[pred["split"] == split].groupby("model_name")["record_id"].nunique()
+            for model, n in got.items():
+                if n < expected:
+                    warnings.append(f"model '{model}' covers {n} of {expected} {split} rows ({n / expected:.1%}).")
+
+    # y_pred should be the most likely class. We recompute it from the probabilities for every metric.
+    recomputed = np.array(CLASSES)[pred[PROBA_COLS].to_numpy().argmax(axis=1)]
+    mismatch = float((recomputed != pred["y_pred"].to_numpy()).mean())
+    if mismatch > 0.001:
+        warnings.append(f"y_pred differs from the argmax of the probabilities in {mismatch:.1%} of rows; metrics use the recomputed argmax.")
+    return {"errors": errors, "warnings": warnings, "y_pred_mismatch_share": mismatch}
+
+
 def attach_context(pred: pd.DataFrame, prepared: pd.DataFrame | None) -> pd.DataFrame:
     """Add timestamp and slice columns from the prepared dataset, and a 'block' column for the bootstrap."""
     if prepared is not None:
@@ -111,7 +156,9 @@ def class_index(labels: pd.Series) -> np.ndarray:
 def model_arrays(df: pd.DataFrame, model: str, split: str) -> dict:
     """Pull one model's rows for one split as plain arrays."""
     part = df[(df["model_name"] == model) & (df["split"] == split)]
-    return {"t": class_index(part["y_true"]), "argmax": class_index(part["y_pred"]), "proba": part[PROBA_COLS].to_numpy(),
+    proba = part[PROBA_COLS].to_numpy()
+    # The most likely class is recomputed from the probabilities, not trusted from the y_pred column.
+    return {"t": class_index(part["y_true"]), "argmax": proba.argmax(axis=1), "proba": proba,
             "blocks": part["block"].to_numpy(), "frame": part}
 
 
@@ -147,10 +194,13 @@ def evaluate_models(df: pd.DataFrame, cm: np.ndarray, n_boot: int) -> tuple:
         f1, f1_lo, f1_hi = block_bootstrap_ci(macro_f1, test["t"], test["argmax"], blocks=test["blocks"], n=n_boot)
         ap, ap_lo, ap_hi = block_bootstrap_ci(average_precision, is_crit, p_crit, blocks=test["blocks"], n=n_boot)
         co, co_lo, co_hi = block_bootstrap_ci(cost_fn, test["t"], pred_t, blocks=test["blocks"], n=n_boot)
+        # Macro-F1 of the decision the operator actually gets (the frozen alert threshold), not just the argmax.
+        ft, ft_lo, ft_hi = block_bootstrap_ci(macro_f1, test["t"], pred_t, blocks=test["blocks"], n=n_boot)
 
         row = {"model_name": model, "model_version": test["frame"]["model_version"].iloc[0], "is_baseline": is_baseline(model),
                "n_test": len(test["t"]), "n_test_critical": int(is_crit.sum()),
                "macro_f1": f1, "macro_f1_lo": f1_lo, "macro_f1_hi": f1_hi,
+               "macro_f1_at_threshold": ft, "macro_f1_at_threshold_lo": ft_lo, "macro_f1_at_threshold_hi": ft_hi,
                "balanced_accuracy": balanced_accuracy(test["t"], test["argmax"]),
                "pr_auc_critical": ap, "pr_auc_critical_lo": ap_lo, "pr_auc_critical_hi": ap_hi,
                "log_loss": log_loss(test["t"], test["proba"]), "brier_multiclass": multiclass_brier(test["t"], test["proba"]),
@@ -161,7 +211,7 @@ def evaluate_models(df: pd.DataFrame, cm: np.ndarray, n_boot: int) -> tuple:
                "precision_critical": prf["precision"][2], "recall_critical": prf["recall"][2]}
         row.update({f"at_threshold_{k}": v for k, v in alert_stats(test["t"], pred_t).items()})
         rows.append(row)
-        print(f"  {model:<22} macro-F1 {f1:.3f} [{f1_lo:.3f}, {f1_hi:.3f}]  PR-AUC(crit) {ap:.3f}  cost@t* {co:.3f}  t*={thr:.2f}")
+        print(f"  {model:<22} macro-F1(argmax) {f1:.3f} [{f1_lo:.3f}, {f1_hi:.3f}]  macro-F1@t* {ft:.3f}  PR-AUC(crit) {ap:.3f}  cost@t* {co:.3f}  t*={thr:.2f}")
     return pd.DataFrame(rows), thresholds, val_tables
 
 
@@ -199,7 +249,7 @@ def plot_model_comparison(table: pd.DataFrame, out: Path) -> None:
     colour = np.where(t["is_baseline"], "#9aa5b1", "#1f6feb")
     for ax, col, lo, hi, title in [(axes[0], "macro_f1", "macro_f1_lo", "macro_f1_hi", "Macro-F1 on test (higher is better)"),
                                    (axes[1], "expected_cost_at_threshold", "expected_cost_lo", "expected_cost_hi", "Expected cost per shipment on test (lower is better)")]:
-        ax.barh(y, t[col], color=colour, xerr=[t[col] - t[lo], t[hi] - t[col]], ecolor="#333", capsize=3)
+        ax.barh(y, t[col], color=colour, xerr=[(t[col] - t[lo]).clip(lower=0), (t[hi] - t[col]).clip(lower=0)], ecolor="#333", capsize=3)
         ax.set_title(title, fontsize=10)
         ax.set_yticks(y)
         ax.set_yticklabels(t["model_name"])
@@ -295,7 +345,7 @@ def split_class_mix(df: pd.DataFrame) -> dict:
     Why: a threshold chosen on val only transfers to test if the two periods look alike. Seasonal data can break that.
     """
     one_model = df[df["model_name"] == df["model_name"].iloc[0]]
-    mix = one_model.groupby("split")["y_true"].value_counts(normalize=True).unstack().fillna(0.0)
+    mix = one_model.groupby("split")["y_true"].value_counts(normalize=True).unstack().reindex(columns=CLASSES).fillna(0.0)
     crit = mix["CRITICAL_DELAY"]
     shifted = bool(crit.max() > 2 * max(crit.min(), 1e-9))  # more than 2x apart = clearly different periods
     return {"share_by_split": mix.round(4).to_dict(orient="index"), "critical_share_differs_2x_between_splits": shifted}
@@ -355,7 +405,7 @@ def slice_analysis(df: pd.DataFrame, champion: str, thr: float, out_csv: Path, o
             pred = decide_with_threshold(part[PROBA_COLS].to_numpy(), thr)
             stats = alert_stats(t, pred)
             rows.append({"dimension": dim, "slice": value, "n": len(part), "n_critical": int((t == 2).sum()),
-                         "macro_f1": macro_f1(t, class_index(part["y_pred"])), "critical_recall": stats["critical_recall"],
+                         "macro_f1": macro_f1(t, pred), "critical_recall": stats["critical_recall"],
                          "alert_precision": stats["alert_precision"]})
     out = pd.DataFrame(rows)
     out.to_csv(out_csv, index=False)
@@ -391,7 +441,7 @@ def anomaly_check(df: pd.DataFrame, champion: str, thr: float) -> dict:
 
 
 def run_leakage_tests(table: pd.DataFrame, champion: str, prepared: pd.DataFrame | None, model_card: Path) -> dict:
-    """Five tests from the Role 4 file. Tests that need the prepared dataset or the model card say NOT_RUN if absent."""
+    """The leakage tests from the Role 4 file. A test that cannot run says NOT_RUN, and one that only covered part of the features says PARTIAL; neither is shown as a plain PASS."""
     # The purge gap comes from the frozen label policy (168 h).
     purge = json.loads((CONTRACTS_DIR / "label_policy.json").read_text(encoding="utf-8"))["split_policy"]["purge_gap_hours"]
     out = {}
@@ -407,21 +457,25 @@ def run_leakage_tests(table: pd.DataFrame, champion: str, prepared: pd.DataFrame
         out["a_feature_policy"] = {"status": "NOT_RUN", "reason": "model_card.json missing or has no 'features' list"}
 
     if prepared is None:
-        for key in ("b_shuffle_label", "c_single_feature_ceiling", "d_time_order"):
+        for key in ("b_label_shuffle_sanity", "c_single_feature_ceiling", "c2_bookkeeping_ceiling", "d_time_order"):
             out[key] = {"status": "NOT_RUN", "reason": "prepared dataset not found"}
     else:
         labelled = prepared[prepared["delay_status"].notna()]
-        probe_features = features or [f for f in leakage.load_feature_policy()["allowed_base_features"] if f in labelled.columns]
-        probe_features = [f for f in probe_features if f in labelled.columns]
+        # Test the features the model really used when the card lists them, otherwise the allowed base features.
+        tested = features or leakage.load_feature_policy()["allowed_base_features"]
+        usable = [f for f in tested if f in labelled.columns]
         train, test = labelled[labelled["split"] == "train"], labelled[labelled["split"] == "test"]
-        out["b_shuffle_label"] = leakage.shuffle_label_probe(train, test, probe_features, "delay_status", seed=SEED)
-        out["c_single_feature_ceiling"] = leakage.single_feature_ceiling(train, probe_features, (train["delay_status"] == "CRITICAL_DELAY").to_numpy())
+        is_crit_train = (train["delay_status"] == "CRITICAL_DELAY").to_numpy()
+        out["b_label_shuffle_sanity"] = leakage.shuffle_label_probe(train, test, usable, "delay_status", seed=SEED)
+        out["c_single_feature_ceiling"] = leakage.single_feature_ceiling(train, tested, is_crit_train)
+        out["c2_bookkeeping_ceiling"] = leakage.bookkeeping_ceiling(train, is_crit_train)
         out["d_time_order"] = leakage.time_order_check(labelled, purge)
 
-    # (e) a macro-F1 above 0.95 is more likely a leak than a triumph.
-    f1 = float(table.loc[table["model_name"] == champion, "macro_f1"].iloc[0])
-    out["e_too_good_to_be_true"] = leakage.too_good_alarm(f1)
-    out["overall"] = "FAIL" if any(v.get("status") == "FAIL" for v in out.values() if isinstance(v, dict)) else "PASS_OR_NOT_RUN"
+    # (e) a macro-F1 above 0.95 (by either rule) is more likely a leak than a triumph.
+    row = table.loc[table["model_name"] == champion].iloc[0]
+    out["e_too_good_to_be_true"] = leakage.too_good_alarm(float(max(row["macro_f1"], row["macro_f1_at_threshold"])))
+    statuses = [v.get("status") for v in out.values() if isinstance(v, dict)]
+    out["overall"] = "FAIL" if "FAIL" in statuses else ("PARTIAL" if ("PARTIAL" in statuses or "NOT_RUN" in statuses) else "PASS")
     return out
 
 
@@ -436,18 +490,20 @@ def write_ledger(table: pd.DataFrame, champion: dict, leak: dict, eces: dict) ->
     fmt = lambda v, lo, hi: f"{v:.3f} [{lo:.3f}, {hi:.3f}]"  # noqa: E731
     name = champion["model_name"]
     rows = [
-        ("C-ML-01", f"{name} macro-F1 on the held-out test period", fmt(c.macro_f1, c.macro_f1_lo, c.macro_f1_hi), src),
-        ("C-ML-02", f"{base_name} (best baseline) macro-F1 on test", fmt(b.macro_f1, b.macro_f1_lo, b.macro_f1_hi) if b is not None else "n/a", src),
+        ("C-ML-01", f"{name} macro-F1 on the held-out test period (most-likely-class rule)", fmt(c.macro_f1, c.macro_f1_lo, c.macro_f1_hi), src),
+        ("C-ML-02", f"{base_name} (best baseline) macro-F1 on test (most-likely-class rule)", fmt(b.macro_f1, b.macro_f1_lo, b.macro_f1_hi) if b is not None else "n/a", src),
         ("C-ML-03", f"{name} PR-AUC for CRITICAL_DELAY on test", fmt(c.pr_auc_critical, c.pr_auc_critical_lo, c.pr_auc_critical_hi), src),
         ("C-ML-04", "Alert threshold on P(critical), chosen on validation by minimum cost", f"{c.threshold:.2f}", "Stage01_ML/reports/eval_champion.json"),
         ("C-ML-05", f"{name} expected cost per shipment at that threshold (test)", fmt(c.expected_cost_at_threshold, c.expected_cost_lo, c.expected_cost_hi), src),
         ("C-ML-06", "Share of CRITICAL delays caught at the frozen threshold (test)", f"{c.at_threshold_critical_recall:.3f}", src),
         ("C-ML-07", "False alarms per 100 alerts at the frozen threshold (test)", f"{c.at_threshold_false_alarms_per_100_alerts:.1f}", src),
-        ("C-ML-08", "Macro-F1 with shuffled training labels (must be near chance)", _fmt_leak(leak["b_shuffle_label"], "test_macro_f1_with_shuffled_labels"), "Stage01_ML/reports/eval_leakage_tests.json"),
+        ("C-ML-08", "Scoring sanity check: model trained on shuffled labels scores near chance (does not prove absence of leakage)", _fmt_leak(leak["b_label_shuffle_sanity"], "test_macro_f1_with_shuffled_labels"), "Stage01_ML/reports/eval_leakage_tests.json"),
         ("C-ML-09", "Strongest single feature's AUC for CRITICAL (must stay under 0.95)", _fmt_leak(leak["c_single_feature_ceiling"], "max_auc"), "Stage01_ML/reports/eval_leakage_tests.json"),
         ("C-ML-10", "Time-order and purge-gap check between train, val and test", leak["d_time_order"]["status"], "Stage01_ML/reports/eval_leakage_tests.json"),
         ("C-ML-11", f"{name} calibration error (ECE) for P(critical) on test", f"{eces.get(name, float('nan')):.3f}", "Stage01_ML/reports/eval_calibration.png"),
         ("C-ML-12", "Does the champion beat the best baseline on validation cost?", str(champion.get("beats_baseline")), "Stage01_ML/reports/eval_champion.json"),
+        ("C-ML-13", f"{name} macro-F1 at the frozen alert threshold (the decision the operator gets)", fmt(c.macro_f1_at_threshold, c.macro_f1_at_threshold_lo, c.macro_f1_at_threshold_hi), src),
+        ("C-ML-14", "Id-column check: how much more than the clock an id's numeric order says about CRITICAL, in AUC (must stay under 0.05)", _fmt_leak(leak["c2_bookkeeping_ceiling"], "excess_over_clock"), "Stage01_ML/reports/eval_leakage_tests.json"),
     ]
     for cid, claim, value, source in rows:
         ledger.upsert(cid, 1, claim, value, source, cmd, status="PENDING")
@@ -476,7 +532,18 @@ def main() -> int:
     prepared_path = find_prepared(args.prepared)
     prepared = pd.read_csv(prepared_path) if prepared_path else None
     print(f"predictions: {args.predictions}\nprepared dataset: {prepared_path or 'NOT FOUND (slices and leakage tests will say NOT_RUN)'}")
-    df = attach_context(load_predictions(args.predictions), prepared)
+    raw_pred = load_predictions(args.predictions)
+
+    # Step 1b: trust check. A broken predictions file stops the run (exit 5) before any number is computed.
+    integrity = check_integrity(raw_pred, prepared)
+    for note in integrity["warnings"]:
+        print(f"WARNING: {note}")
+    if integrity["errors"]:
+        for note in integrity["errors"]:
+            print(f"ERROR: {note}")
+        print("STOPPED: fix the predictions file (ask Role 1) and run again. No evaluation files were written.")
+        return 5
+    df = attach_context(raw_pred, prepared)
     if not ({"val", "test"} <= set(df["split"])):
         raise SystemExit("predictions need both 'val' and 'test' rows (val picks the threshold, test reports it).")
 
@@ -491,6 +558,15 @@ def main() -> int:
     name = champion["model_name"]
     print(f"champion: {name}  (beats baseline: {champion['beats_baseline']})")
     champ_row = table[table["model_name"] == name].iloc[0]
+
+    # Step 3b: leakage tests come BEFORE anything is published. A FAIL (or a SUSPECT score) blocks the champion file
+    # and the ledger, so a leaky model can never be served by the API or quoted in a debate by accident.
+    leak = run_leakage_tests(table, name, prepared, args.model_card)
+    (out_dir / "eval_leakage_tests.json").write_text(json.dumps(leak, indent=2, default=float), encoding="utf-8")
+    if leak["overall"] == "FAIL":
+        failed = [k for k, v in leak.items() if isinstance(v, dict) and v.get("status") == "FAIL"]
+        print(f"BLOCKED: leakage tests failed: {failed}. No champion file and no ledger rows were written. See eval_leakage_tests.json.")
+        return 4
     (out_dir / "eval_champion.json").write_text(json.dumps({
         "stage": STAGE, "model_name": name, "model_version": str(champ_row["model_version"]), "threshold": thresholds[name],
         "selected_on": "val", "cost_policy_version": policy["version"], "date": date.today().isoformat(),
@@ -500,7 +576,9 @@ def main() -> int:
     shown = [name] + ([champion["best_baseline"]] if champion.get("best_baseline") and champion["best_baseline"] != name else [])
     plot_confusions(df, shown, thresholds, out_dir / "eval_confusion.png")
     plot_cost_curve(val_tables, shown, thresholds, out_dir / "eval_cost_curve.png")
-    calib_models = [name] + [m for m in df["model_name"].unique() if m == f"{name}_cal"]
+    # Show the champion next to its calibrated or uncalibrated twin (xgboost vs xgboost_cal), whichever it is.
+    twin = name[:-4] if name.endswith("_cal") else f"{name}_cal"
+    calib_models = [name] + [m for m in df["model_name"].unique() if m == twin]
     eces = plot_calibration(df, calib_models, out_dir / "eval_calibration.png")
     sens = sensitivity_table(df, name, policy)
     sens.to_csv(out_dir / "eval_threshold_sensitivity.csv", index=False)
@@ -510,23 +588,21 @@ def main() -> int:
     mix = split_class_mix(df)
     write_decision_memo(out_dir / "eval_threshold_decision.md", table, champion, sens, policy, bayes, mix)
 
-    # Step 5: slices, anomaly detector, leakage tests.
+    # Step 5: slices and the anomaly detector.
     slices = slice_analysis(df, name, thresholds[name], out_dir / "eval_slices.csv", out_dir / "eval_slices.png")
     anomaly = anomaly_check(df, name, thresholds[name])
     (out_dir / "eval_anomaly.json").write_text(json.dumps(anomaly, indent=2), encoding="utf-8")
-    leak = run_leakage_tests(table, name, prepared, args.model_card)
-    (out_dir / "eval_leakage_tests.json").write_text(json.dumps(leak, indent=2, default=float), encoding="utf-8")
 
     # Step 6: one JSON with everything, for the dashboard and the report.
     (out_dir / "eval_metrics.json").write_text(json.dumps({
         "stage": STAGE, "date": date.today().isoformat(), "seed": SEED, "bootstrap_resamples": args.n_boot,
-        "champion": champion, "bayes_three_class": bayes, "split_class_mix": mix, "slices_available": slices is not None,
+        "integrity": integrity, "champion": champion, "bayes_three_class": bayes, "split_class_mix": mix, "slices_available": slices is not None,
         "models": table.to_dict(orient="records")}, indent=2, default=float), encoding="utf-8")
 
     # Step 7: claims ledger, only for real runs (a custom --out-dir means a dry run).
     if not args.no_ledger and args.out_dir is None:
         write_ledger(table, champion, leak, eces)
-        print("ledger: 12 rows written to claims/CLAIMS_LEDGER.md (status PENDING until a clean-clone run)")
+        print("ledger: 14 rows written to claims/CLAIMS_LEDGER.md (status PENDING until a clean-clone run)")
     print(f"leakage tests overall: {leak['overall']}\nwritten to: {out_dir}")
     return 0
 

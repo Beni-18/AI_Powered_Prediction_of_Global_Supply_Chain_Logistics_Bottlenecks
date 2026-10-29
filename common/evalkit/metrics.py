@@ -29,25 +29,42 @@ def per_class_prf(t: np.ndarray, p: np.ndarray, k: int = N_CLASSES) -> dict:
     return {"precision": precision, "recall": recall, "f1": f1}
 
 
+def _present_classes(t: np.ndarray, p: np.ndarray, k: int = N_CLASSES) -> np.ndarray:
+    """Classes that occur in the truth or in the predictions (same rule as scikit-learn's macro average).
+
+    A class that never occurs anywhere (e.g. no CRITICAL shipment at one small node) must not drag the
+    average down with a fake zero.
+    """
+    return (np.bincount(t, minlength=k) + np.bincount(p, minlength=k)) > 0
+
+
 def macro_f1(t: np.ndarray, p: np.ndarray) -> float:
-    """Average F1 over the three classes, so the rare CRITICAL class counts as much as ON_TIME."""
-    return float(per_class_prf(t, p)["f1"].mean())
+    """Average F1 over the classes that occur, so the rare CRITICAL class counts as much as ON_TIME."""
+    return float(per_class_prf(t, p)["f1"][_present_classes(t, p)].mean())
 
 
 def balanced_accuracy(t: np.ndarray, p: np.ndarray) -> float:
-    """Average recall over the classes (immune to class imbalance, unlike plain accuracy)."""
-    return float(per_class_prf(t, p)["recall"].mean())
+    """Average recall over the classes that occur in the truth (immune to class imbalance, unlike accuracy)."""
+    has_truth = np.bincount(t, minlength=N_CLASSES) > 0
+    return float(per_class_prf(t, p)["recall"][has_truth].mean())
 
 
 def average_precision(is_positive: np.ndarray, score: np.ndarray) -> float:
-    """PR-AUC as average precision: how well the score ranks real positives above the rest."""
+    """PR-AUC as average precision: how well the score ranks real positives above the rest.
+
+    Rows with the same score are one step (one threshold), so the answer does not depend on row order.
+    """
     n_pos = int(is_positive.sum())
     if n_pos == 0:
         return float("nan")
     order = np.argsort(-score, kind="mergesort")
-    hit = is_positive[order].astype(float)
-    precision_at_k = np.cumsum(hit) / np.arange(1, len(hit) + 1)
-    return float((precision_at_k * hit).sum() / n_pos)
+    s, hit = score[order], is_positive[order].astype(float)
+    tp, n_seen = np.cumsum(hit), np.arange(1, len(hit) + 1)
+    # Keep only the last row of each group of equal scores: that is where a real threshold can cut.
+    last_of_group = np.append(s[1:] != s[:-1], True)
+    precision, recall = tp[last_of_group] / n_seen[last_of_group], tp[last_of_group] / n_pos
+    step = np.diff(np.concatenate([[0.0], recall]))
+    return float((precision * step).sum())
 
 
 def roc_auc(is_positive: np.ndarray, score: np.ndarray) -> float:

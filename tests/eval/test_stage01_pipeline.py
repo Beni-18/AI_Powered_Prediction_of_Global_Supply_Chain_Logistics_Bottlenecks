@@ -65,8 +65,9 @@ def test_champion_file_has_the_agreed_keys_and_a_sane_threshold(run):
 def test_leakage_tests_run_and_pass_on_the_simulator(run):
     _, out, _ = run
     leak = json.loads((out / "eval_leakage_tests.json").read_text(encoding="utf-8"))
-    assert leak["b_shuffle_label"]["status"] == "PASS"
-    assert leak["c_single_feature_ceiling"]["status"] == "PASS"
+    assert leak["b_label_shuffle_sanity"]["status"] == "PASS"
+    assert leak["c_single_feature_ceiling"]["status"] in {"PASS", "PARTIAL"}
+    assert leak["c2_bookkeeping_ceiling"]["status"] == "PASS"
     assert leak["d_time_order"]["status"] == "PASS"
     assert leak["e_too_good_to_be_true"]["status"] == "PASS"
 
@@ -83,3 +84,66 @@ def test_missing_predictions_file_exits_with_the_skipped_code(tmp_path):
                              "--predictions", str(tmp_path / "nope.csv"), "--out-dir", str(tmp_path / "o")],
                             cwd=REPO_ROOT, capture_output=True, text=True)
     assert result.returncode == 3 and "WAITING" in result.stdout
+
+
+# ---------- the script must refuse to publish when the input or the result cannot be trusted ----------
+
+def _run(pred_path, prepared_path, out):
+    return subprocess.run([sys.executable, str(REPO_ROOT / "Stage01_ML" / "04_evaluation_engineer.py"), "--predictions", str(pred_path),
+                           "--prepared", str(prepared_path), "--out-dir", str(out), "--n-boot", "20"],
+                          cwd=REPO_ROOT, capture_output=True, text=True)
+
+
+@pytest.fixture(scope="module")
+def stand_in(tmp_path_factory):
+    folder = tmp_path_factory.mktemp("integrity")
+    pred_path, prepared_path = rehearsal.build(folder)
+    return folder, pred_path, prepared_path
+
+
+def test_split_disagreeing_with_the_frozen_dataset_stops_the_run(stand_in):
+    import pandas as pd
+
+    folder, pred_path, prepared_path = stand_in
+    pred = pd.read_csv(pred_path)
+    # Pretend Role 1 moved some training rows into the test split.
+    swap = pred[(pred["model_name"] == "gbm") & (pred["split"] == "train")].index[:50]
+    pred.loc[swap, "split"] = "test"
+    bad = folder / "bad_split.csv"
+    pred.to_csv(bad, index=False)
+    result = _run(bad, prepared_path, folder / "out_bad_split")
+    assert result.returncode == 5 and "different split" in result.stdout
+    assert not (folder / "out_bad_split" / "eval_champion.json").exists()
+
+
+def test_models_scoring_different_rows_stop_the_run(stand_in):
+    import pandas as pd
+
+    folder, pred_path, prepared_path = stand_in
+    pred = pd.read_csv(pred_path)
+    drop = pred[(pred["model_name"] == "logistic") & (pred["split"] == "test")].index[:100]
+    bad = folder / "bad_rows.csv"
+    pred.drop(drop).to_csv(bad, index=False)
+    result = _run(bad, prepared_path, folder / "out_bad_rows")
+    assert result.returncode == 5 and "different set" in result.stdout
+
+
+def test_a_too_good_to_be_true_champion_is_blocked_from_publishing(stand_in):
+    import pandas as pd
+
+    folder, pred_path, prepared_path = stand_in
+    pred = pd.read_csv(pred_path)
+    # A "perfect" model that simply returns the truth: the classic sign of leakage.
+    perfect = pred[pred["model_name"] == "gbm"].copy()
+    perfect["model_name"] = "too_good"
+    for col, cls in (("p_on_time", "ON_TIME"), ("p_at_risk", "AT_RISK"), ("p_critical", "CRITICAL_DELAY")):
+        perfect[col] = (perfect["y_true"] == cls).astype(float)
+    perfect["y_pred"] = perfect["y_true"]
+    perfect["risk_score"] = perfect["p_critical"] + 0.5 * perfect["p_at_risk"]
+    bad = folder / "too_good.csv"
+    pd.concat([pred, perfect]).to_csv(bad, index=False)
+    out = folder / "out_too_good"
+    result = _run(bad, prepared_path, out)
+    # The perfect model wins on cost, so the champion is it, and the script must refuse to publish.
+    assert result.returncode == 4 and "BLOCKED" in result.stdout
+    assert not (out / "eval_champion.json").exists()

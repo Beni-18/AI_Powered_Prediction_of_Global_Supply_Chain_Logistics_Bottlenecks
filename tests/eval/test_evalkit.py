@@ -10,6 +10,7 @@ from common.evalkit import (
     load_cost_matrix, log_loss, macro_f1, paired_bootstrap_diff, pinball_loss, reliability_table, roc_auc,
     scaled_cost_matrix, skill_score,
 )
+from common.evalkit import leakage, lead_time_by_node
 
 CM = load_cost_matrix()
 
@@ -245,3 +246,73 @@ def test_ledger_rejects_unknown_status_and_survives_pipes(tmp_path):
 def test_real_ledger_file_has_markers():
     text = ledger.LEDGER_PATH.read_text(encoding="utf-8")
     assert ledger.BEGIN in text and ledger.END in text
+
+
+# ---------- fixes from the code review ----------
+
+def test_macro_f1_ignores_a_class_that_never_occurs():
+    # No CRITICAL anywhere in this small slice: it must not drag the average down with a fake zero.
+    t = np.array([0, 0, 1, 1])
+    p = np.array([0, 0, 1, 1])
+    assert macro_f1(t, p) == 1.0
+    # But predicting a class that never occurs is a real error and does count.
+    assert macro_f1(np.array([0, 0, 1, 1]), np.array([0, 2, 1, 1])) < 1.0
+
+
+def test_average_precision_does_not_depend_on_row_order_when_scores_tie():
+    is_pos = np.array([1, 0, 1, 0, 0, 1, 0, 0])
+    score = np.array([0.7, 0.7, 0.7, 0.7, 0.2, 0.2, 0.2, 0.2])
+    reference = average_precision(is_pos, score)
+    rng = np.random.default_rng(0)
+    for _ in range(10):
+        order = rng.permutation(len(score))
+        assert average_precision(is_pos[order], score[order]) == pytest.approx(reference)
+    # Hand check: 2 of 4 rows at 0.7 are positive -> precision 0.5 at recall 2/3; then 3 of 8 at recall 1.
+    assert reference == pytest.approx(0.5 * (2 / 3) + (3 / 8) * (1 / 3))
+
+
+def test_a_missing_hour_inside_an_episode_does_not_split_it():
+    t = pd.date_range("2025-01-01", periods=48, freq="h")
+    v = np.zeros(48)
+    v[10:20] = 9
+    keep = np.ones(48, dtype=bool)
+    keep[14] = False  # one hour missing from the feed
+    assert episodes_from_series(t[keep], v[keep], threshold=5) == [t[10]]
+
+
+def test_alerts_at_one_node_are_not_credited_to_another_node():
+    onset = pd.Timestamp("2025-01-10")
+    alerts = pd.DataFrame({"node_id": ["PORT_A"], "time": [pd.Timestamp("2025-01-08")]})
+    onsets = pd.DataFrame({"node_id": ["PORT_B"], "time": [onset]})
+    res = lead_time_by_node(alerts, onsets)
+    assert res["n_caught"] == 0 and res["false_alarms"] == 1
+    same = lead_time_by_node(alerts.assign(node_id="PORT_B"), onsets)
+    assert same["n_caught"] == 1 and same["median_lead_h"] == pytest.approx(48.0)
+
+
+def test_single_feature_ceiling_is_partial_when_features_could_not_be_tested():
+    df = pd.DataFrame({"a": np.arange(100.0), "carrier": ["X", "Y"] * 50})
+    crit = (np.arange(100) % 7 == 0)
+    res = leakage.single_feature_ceiling(df, ["a", "carrier", "lag_a"], crit)
+    assert res["status"] == "PARTIAL" and set(res["untested_features"]) == {"carrier", "lag_a"}
+
+
+def test_a_feature_that_nearly_equals_the_answer_fails_the_ceiling():
+    rng = np.random.default_rng(1)
+    crit = rng.uniform(size=2000) < 0.15
+    df = pd.DataFrame({"leaky": crit + rng.normal(scale=0.05, size=2000), "honest": rng.normal(size=2000)})
+    assert leakage.single_feature_ceiling(df, ["leaky", "honest"], crit)["status"] == "FAIL"
+
+
+def test_ids_that_follow_the_clock_pass_but_ids_that_encode_the_label_fail():
+    n = 3000
+    rng = np.random.default_rng(2)
+    crit = rng.uniform(size=n) < 0.2
+    ts = pd.date_range("2025-01-01", periods=n, freq="h").strftime("%Y-%m-%dT%H:%M:%SZ")
+    honest = pd.DataFrame({"record_id": [f"R{i:06d}" for i in range(n)], "timestamp": ts})
+    assert leakage.bookkeeping_ceiling(honest, crit)["status"] == "PASS"
+    # Ids handed out so that critical rows get the high numbers.
+    order = np.argsort(crit.astype(float) + rng.uniform(size=n) * 0.5)
+    leaky = honest.copy()
+    leaky["record_id"] = [f"R{i:06d}" for i in np.argsort(order)]
+    assert leakage.bookkeeping_ceiling(leaky, crit)["status"] == "FAIL"
