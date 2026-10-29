@@ -1,0 +1,70 @@
+{
+  "model_name": "graph_forecaster_spatial_gnn",
+  "model_version": "v1.0",
+  "created_utc": "2026-10-29T08:12:52.355184+00:00",
+  "seed": 42,
+  "train_window": {
+    "n_windows": 496,
+    "window_hours": 72,
+    "horizons": [
+      1,
+      6,
+      24,
+      72,
+      168
+    ]
+  },
+  "feature_count": 8,
+  "features": [
+    "avg_dwell_time_hours",
+    "throughput_teu_per_hr",
+    "capacity_utilization_pct",
+    "customs_hold_hours",
+    "weather_severity_index",
+    "labor_deficit_ratio",
+    "equipment_availability_pct",
+    "inventory_level_teu"
+  ],
+  "metrics_on_val": {
+    "horizons": [
+      1,
+      6,
+      24,
+      72,
+      168
+    ],
+    "targets": [
+      "dwell",
+      "throughput"
+    ],
+    "quantiles": [
+      0.1,
+      0.5,
+      0.9
+    ],
+    "models_evaluated": [
+      "persistence",
+      "seasonal_naive",
+      "xgb_lag",
+      "lstm_forecaster",
+      "graph_none",
+      "graph_shuffled",
+      "graph_full"
+    ],
+    "training_duration_seconds": 73.33
+  },
+  "hyperparameters": {},
+  "library_versions": {
+    "python": "3.13.5",
+    "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+    "numpy": "2.3.4",
+    "pandas": "2.3.3",
+    "scipy": "1.17.0",
+    "sklearn": "1.8.0",
+    "xgboost": "3.1.3",
+    "lightgbm": "4.7.0",
+    "torch": "2.15.0",
+    "shap": "0.54.1"
+  },
+  "notes": "Stage 02 DL: Multi-horizon Spatial Topology GNN with graph convolution and full ablation comparisons."
+}
