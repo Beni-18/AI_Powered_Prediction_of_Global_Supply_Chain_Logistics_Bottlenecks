@@ -1,0 +1,19 @@
+# Keep line endings stable between Windows and macOS/Linux laptops (prevents fake "whole file changed" diffs).
+* text=auto
+*.sh text eol=lf
+.githooks/* text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.csv text eol=lf
+
+# Binary files: never try to diff or merge them as text.
+*.pkl binary
+*.joblib binary
+*.pt binary
+*.pth binary
+*.npz binary
+*.npy binary
+*.safetensors binary
+*.png binary
+*.pdf binary

@@ -1,0 +1,48 @@
+# ---- Python / environments ----
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+.mypy_cache/
+.ruff_cache/
+
+# ---- secrets (NEVER commit; copy .env.example to .env and fill locally) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+
+# ---- reference material lives on each device only ----
+# Put the reference project folder and the problem-statement PDF inside _reference/ so your IDE can read them.
+# Only the README of that folder is committed.
+_reference/*
+!_reference/README.md
+
+# ---- downloaded raw data (re-created by scripts/fetch_*.py; see docs/06_DATA_SOURCES.md) ----
+data/raw/real/*
+!data/raw/real/.gitkeep
+
+# ---- training junk that should never be shared ----
+wandb/
+mlruns/
+runs/
+lightning_logs/
+*.ckpt
+checkpoint-*/
+hf_cache/
+.cache/
+
+# ---- packaged offline demo (contains model weights; rebuilt by scripts/package_offline.py) ----
+dist/
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
