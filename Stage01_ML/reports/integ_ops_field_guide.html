@@ -15,17 +15,17 @@ hr { border: 0; border-top: 1px solid #d0d7de; margin: 1.25rem 0; } .src { font-
 <table><tr><th>Status</th><th>Meaning</th></tr><tr><td>ON_TIME</td><td>Expected delay under 6 hours [1]</td></tr><tr><td>AT_RISK</td><td>Expected delay 6 to 24 hours: watch it [1]</td></tr><tr><td>CRITICAL_DELAY</td><td>Expected delay of 24 hours or more: act [1]</td></tr></table>
 <h2>When the tool raises an alert</h2>
 <ul>
-<li>Alert when the chance of CRITICAL is <strong>37% or more</strong> (model <code>logreg</code>) [2].</li>
-<li>On held-out data it caught <strong>79%</strong> of critical delays; <strong>38 of every 100 alerts</strong> were false alarms [3].</li>
+<li>Alert when the chance of CRITICAL is <strong>34% or more</strong> (model <code>logreg</code>) [2].</li>
+<li>On held-out data it caught <strong>83%</strong> of critical delays; <strong>40 of every 100 alerts</strong> were false alarms [3].</li>
 <li>Why accept false alarms: a missed critical delay costs <strong>10x</strong> an unnecessary escalation (1 unit) [4].</li>
 </ul>
 <h2>Top five drivers of a CRITICAL prediction [5]</h2>
 <p>(Ranked by Role 1&#x27;s SHAP analysis of the XGBoost model; the served model may weigh them slightly differently, and each API answer lists its own top drivers.)</p>
-<p>1. <code>dwell_time_hours</code></p>
-<p>2. <code>capacity_utilization_pct</code></p>
+<p>1. <code>lag_capacity_utilization_pct</code></p>
+<p>2. <code>lag_inventory_level_teu</code></p>
 <p>3. <code>eng_labor_x_equipment_gap</code></p>
 <p>4. <code>weather_severity_index</code></p>
-<p>5. <code>roll_node_dwell_mean_24h</code></p>
+<p>5. <code>equipment_availability_pct</code></p>
 <p>In plain words (Role 2):</p>
 <p>Logistics bottleneck risk is primarily driven by dwell time spikes, capacity utilization above 90%, and unexpected customs holds. When terminal dwell exceeds local baselines alongside high utilization, cargo faces compounded delays due to yard gridlock and crane shortages. Elevated historical delay rates and severe weather amplify this congestion by disrupting scheduled vessel berthing windows and feeder rail connections. To mitigate cascading delays, logistics operations teams must closely monitor seasonal demand surges during late summer and autumn, prioritizing expedited or cold-chain containers before yard saturation crosses critical thresholds. Automated predictive alerts provide actionable decision support, always requiring human operator review prior to enacting physical rerouting strategies. Continuous real-time tracking across international gateway ports ensures resilient end-to-end global supply chain transit performance.</p>
 <h2>What the tool will not do</h2>
