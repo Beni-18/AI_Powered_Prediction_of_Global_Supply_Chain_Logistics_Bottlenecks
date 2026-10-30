@@ -1,0 +1,10 @@
+{
+  "stage": 1,
+  "model_name": "logreg",
+  "model_version": "v1.0",
+  "threshold": 0.37,
+  "selected_on": "val",
+  "cost_policy_version": "1.0",
+  "date": "2026-10-30",
+  "beats_baseline": false
+}
