@@ -1,0 +1,10 @@
+# Streamlit settings for the CASCADE control tower. Owner: Role 3.
+# Only the accent colour is fixed (palette blue); light/dark follows the viewer's system setting.
+[theme]
+primaryColor = "#2a78d6"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
