@@ -1,10 +1,10 @@
 {
   "stage": 1,
-  "model_name": "logreg",
+  "model_name": "xgboost_monotone",
   "model_version": "v1.0",
-  "threshold": 0.37,
+  "threshold": 0.32,
   "selected_on": "val",
   "cost_policy_version": "1.0",
   "date": "2026-10-30",
-  "beats_baseline": false
+  "beats_baseline": true
 }
