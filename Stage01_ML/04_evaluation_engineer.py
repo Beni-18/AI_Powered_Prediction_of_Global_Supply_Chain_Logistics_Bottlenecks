@@ -532,7 +532,8 @@ def api_check(url: str, out_dir: Path, n_calls: int = 1000) -> dict:
     fields = ["dwell_time_hours", "throughput_teu_per_hr", "capacity_utilization_pct", "customs_hold_hours", "weather_severity_index",
               "labor_deficit_ratio", "equipment_availability_pct", "historical_delay_rate", "priority_tier", "carrier_code",
               "origin_port", "destination_port", "current_node_id", "timestamp", "record_id"]
-    champion = json.loads((out_dir / "eval_champion.json").read_text(encoding="utf-8"))
+    # The champion file always comes from the real reports folder, even when the result goes to a custom --out-dir.
+    champion = json.loads(stage_path(STAGE, "reports", "eval_champion.json").read_text(encoding="utf-8"))
     times, bad_review, missing_version, wrong_model, errors = [], 0, 0, 0, 0
     for body in test[fields].to_dict(orient="records"):
         request = urllib.request.Request(f"{url}/predict", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
