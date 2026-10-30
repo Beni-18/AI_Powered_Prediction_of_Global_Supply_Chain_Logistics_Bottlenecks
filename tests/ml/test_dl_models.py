@@ -7,7 +7,9 @@ Owner: Role 1 - ML Engineer
 from pathlib import Path
 import numpy as np
 import pytest
-import torch
+
+# These tests need PyTorch (Stage 02 only); skip them on machines and CI runners without it.
+torch = pytest.importorskip("torch")
 
 from common.modelkit import (
     HORIZONS,

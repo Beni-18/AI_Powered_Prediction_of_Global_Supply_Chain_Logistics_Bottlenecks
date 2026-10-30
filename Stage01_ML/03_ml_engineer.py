@@ -563,13 +563,28 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
     joblib.dump(pipeline, joblib_path, compress=6)
     print(f"Persisted pipeline artifact ({joblib_path.stat().st_size / 1024:.1f} KB): {joblib_path}")
 
-    # Code-computed validation metrics for model card
-    val_preds_xgb = all_predictions[(all_predictions["model_name"] == "xgboost_cal") & (all_predictions["split"] == "val")]
-    macro_f1_val = f1_score(val_preds_xgb["y_true"], val_preds_xgb["y_pred"], average="macro")
+    # Code-computed validation metrics for every model: macro-F1 and expected cost per shipment (cost matrix from
+    # contracts/cost_policy.json, read through Role 4's evalkit). The proposal is the cheapest model on VAL only;
+    # Role 4 makes the final choice in reports/eval_champion.json.
+    from common.evalkit import expected_cost, load_cost_matrix
+
+    cost_matrix = load_cost_matrix()
+    val_rows = all_predictions[all_predictions["split"] == "val"]
+    candidates = []
+    for model_name, part in val_rows.groupby("model_name"):
+        candidates.append({
+            "model_name": model_name,
+            "is_baseline": model_name in ("majority", "rule_dwell", "logreg"),
+            "val_macro_f1": round(float(f1_score(part["y_true"], part["y_pred"], average="macro")), 4),
+            "val_expected_cost": round(expected_cost(part["y_true"], part["y_pred"], cost_matrix), 4),
+        })
+    candidates.sort(key=lambda c: c["val_expected_cost"])
+    champion_proposal = candidates[0]["model_name"]
+    macro_f1_val = next(c["val_macro_f1"] for c in candidates if c["model_name"] == champion_proposal)
 
     card_path = save_model_card(
         output_dir=artifact_dir,
-        name="xgboost_cal",
+        name=champion_proposal,
         version="v1.0",
         features=pipeline.feature_names_out,
         train_window={"rows": len(train_df), "val_rows": len(val_df), "test_rows": len(test_df)},
@@ -578,7 +593,15 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
             "fast_mode": fast_mode,
             "training_duration_seconds": round(time.time() - start_time, 2),
         },
-        notes="Stage 01 Champion model: Calibrated XGBoost with causal features and Isolation Forest anomaly score.",
+        hyperparameters={
+            "random_forest": {"n_estimators": rf_trees, "max_depth": 12, "min_samples_leaf": 3, "class_weight": "balanced_subsample"},
+            "xgboost": {"learning_rate": 0.05, "max_depth": 5, "subsample": 0.8, "colsample_bytree": 0.8,
+                        "n_estimators_max": xgb_trees, "best_iteration": best_trees - 1, "sample_weight": "inverse class frequency"},
+            "xgboost_cal": {"method": "isotonic", "cv": f"TimeSeriesSplit({cal_cv.n_splits}) inside train"},
+        },
+        notes="Champion proposal = lowest validation expected cost (argmax decision). Final choice and alert threshold: "
+              "Stage01_ML/reports/eval_champion.json (Role 4).",
+        extra_fields={"candidates": candidates, "champion_proposal": champion_proposal},
     )
     print(f"Persisted model card: {card_path}")
 

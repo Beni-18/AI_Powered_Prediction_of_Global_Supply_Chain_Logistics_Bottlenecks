@@ -50,7 +50,8 @@ from common.seed import SEED, set_global_seed  # noqa: E402
 STAGE = 1
 PROBA_COLS = ["p_on_time", "p_at_risk", "p_critical"]
 # Models whose name starts with one of these are the "beat me first" baselines, not candidates for champion.
-BASELINE_PREFIXES = ("rule", "logistic", "majority", "baseline")
+# Role 1's file names them majority, rule_dwell and logreg; the other spellings are kept for older files.
+BASELINE_PREFIXES = ("majority", "rule", "logreg", "logistic", "baseline")
 FALLBACK_BLOCK_ROWS = 100  # used only when no timestamps are available to form day-blocks
 MIN_SLICE_ROWS = 50        # a slice with fewer test rows is too small to rank as "worst"
 
@@ -66,6 +67,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--out-dir", type=Path, default=None, help="where to write eval_* files (default: Stage01_ML/reports; a custom folder also disables the ledger)")
     ap.add_argument("--n-boot", type=int, default=1000, help="bootstrap resamples (1000 for real runs)")
     ap.add_argument("--no-ledger", action="store_true", help="do not touch claims/CLAIMS_LEDGER.md")
+    ap.add_argument("--api-url", default=None, help="only run the independent API check against a running API, e.g. http://127.0.0.1:8001")
     return ap.parse_args()
 
 
@@ -514,6 +516,48 @@ def _fmt_leak(result: dict, key: str) -> str:
     return f"{result[key]:.3f}" if key in result else f"{result['status']}"
 
 
+# ------------------------------------------------------------------ independent API check
+
+def api_check(url: str, out_dir: Path, n_calls: int = 1000) -> dict:
+    """Load-test Role 3's running API over real HTTP: 1,000 single calls on test-split shipments.
+
+    Checks every answer carries requires_operator_review = true and a model_version, and that the API serves the
+    model and threshold in eval_champion.json. Writes eval_api_latency.json.
+    """
+    import time
+    import urllib.request
+
+    prepared = pd.read_csv(find_prepared(None))
+    test = prepared[prepared["split"] == "test"].sample(n=n_calls, random_state=SEED)
+    fields = ["dwell_time_hours", "throughput_teu_per_hr", "capacity_utilization_pct", "customs_hold_hours", "weather_severity_index",
+              "labor_deficit_ratio", "equipment_availability_pct", "historical_delay_rate", "priority_tier", "carrier_code",
+              "origin_port", "destination_port", "current_node_id", "timestamp", "record_id"]
+    champion = json.loads((out_dir / "eval_champion.json").read_text(encoding="utf-8"))
+    times, bad_review, missing_version, wrong_model, errors = [], 0, 0, 0, 0
+    for body in test[fields].to_dict(orient="records"):
+        request = urllib.request.Request(f"{url}/predict", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+        start = time.perf_counter()
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                answer = json.loads(response.read())
+        except Exception:  # count failures instead of stopping: an unreliable API is itself a finding
+            errors += 1
+            continue
+        times.append((time.perf_counter() - start) * 1000)
+        bad_review += answer.get("requires_operator_review") is not True
+        missing_version += not answer.get("model_version")
+        wrong_model += (answer.get("model_name") != champion["model_name"]) or (answer.get("alert_threshold") != champion["threshold"])
+    ms = np.array(times) if times else np.array([np.nan])
+    result = {"url": url, "calls": n_calls, "errors": errors, "p50_ms": round(float(np.percentile(ms, 50)), 2),
+              "p95_ms": round(float(np.percentile(ms, 95)), 2), "p99_ms": round(float(np.percentile(ms, 99)), 2),
+              "responses_without_operator_review": int(bad_review), "responses_without_model_version": int(missing_version),
+              "responses_not_matching_champion": int(wrong_model),
+              "status": "PASS" if (errors == 0 and bad_review == 0 and missing_version == 0 and wrong_model == 0) else "FAIL",
+              "method": "real HTTP (urllib) against a running uvicorn server, one shipment per call", "date": date.today().isoformat()}
+    (out_dir / "eval_api_latency.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    return result
+
+
 # ------------------------------------------------------------------ main
 
 def main() -> int:
@@ -523,6 +567,16 @@ def main() -> int:
     out_dir = args.out_dir or stage_path(STAGE, "reports")
     out_dir.mkdir(parents=True, exist_ok=True)
     policy, cm = load_cost_policy(), load_cost_matrix()
+
+    # API mode: only the independent load test of Role 3's running service.
+    if args.api_url:
+        result = api_check(args.api_url.rstrip("/"), out_dir)
+        print(f"API check {result['status']}: p50 {result['p50_ms']} ms, p95 {result['p95_ms']} ms, p99 {result['p99_ms']} ms, errors {result['errors']}")
+        if not args.no_ledger and args.out_dir is None:
+            ledger.upsert("C-ML-15", 1, "Stage 1 API latency per shipment over real HTTP, 1,000 calls (p95)", f"{result['p95_ms']} ms",
+                          "Stage01_ML/reports/eval_api_latency.json", "uvicorn 05_integration_engineer:app --port 8001 + "
+                          "python Stage01_ML/04_evaluation_engineer.py --api-url http://127.0.0.1:8001", status="PENDING")
+        return 0 if result["status"] == "PASS" else 4
 
     if not args.predictions.exists():
         print(f"WAITING: {args.predictions} does not exist yet. Ask Role 1 for baseline predictions (contracts/fixtures/ml_predictions.csv shows the format).")

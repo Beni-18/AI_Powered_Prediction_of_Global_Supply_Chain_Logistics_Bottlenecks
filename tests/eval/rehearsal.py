@@ -6,6 +6,7 @@ end. NOTHING made here is a team result: it is written to a temp folder and neve
 Run by hand:  python tests/eval/rehearsal.py <output_folder>
 """
 
+import json
 import sys
 from pathlib import Path
 
@@ -104,6 +105,9 @@ def build(out_dir: Path) -> tuple:
     prepared_path, pred_path = out_dir / "prepared_dataset.csv", out_dir / "ml_predictions.csv"
     prepared.to_csv(prepared_path, index=False)
     pred.to_csv(pred_path, index=False)
+    # Its own model card, so a rehearsal never reads Role 1's real card from Stage01_ML/artifacts.
+    card = {"model_name": "gbm", "model_version": "rehearsal", "features": NUMERIC + ["priority_tier_STANDARD", "priority_tier_EXPEDITED"]}
+    (out_dir / "model_card.json").write_text(json.dumps(card, indent=2), encoding="utf-8")
     return pred_path, prepared_path
 
 
