@@ -44,6 +44,7 @@ import xgboost as xgb
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from common.contracts import write_validated_csv
+from common.dataio.node_context import NODE_HISTORY_FEATURES, node_history_features
 from common.evalkit import expected_cost, load_cost_matrix
 from common.modelkit import (
     Stage01Pipeline,
@@ -110,8 +111,22 @@ def load_telemetry_dataset(custom_path: str | None = None) -> pd.DataFrame:
     raise FileNotFoundError("Could not find any telemetry data in data/, raw/, or fixtures/.")
 
 
-def engineer_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
-    """Build calendar, interaction, and strictly causal rolling features."""
+# Dwell and utilisation relative to what is normal at the node (busy gateways run long dwell times every day).
+NODE_RELATIVE = {"eng_dwell_vs_node": "dwell_time_hours", "eng_util_vs_node": "capacity_utilization_pct"}
+EARLY_STOP_TAIL = 0.15  # the last 15% of TRAIN (by time) decides how many trees to use; validation stays untouched
+
+
+def node_train_medians(df: pd.DataFrame) -> pd.DataFrame:
+    """Median dwell and utilisation per node over the TRAIN split only (stored in the pipeline for the API)."""
+    return df[df["split"] == "train"].groupby("current_node_id")[list(NODE_RELATIVE.values())].median()
+
+
+def engineer_features(df: pd.DataFrame, node_medians: pd.DataFrame | None = None) -> tuple[pd.DataFrame, list[str]]:
+    """Build calendar, interaction, node-relative, node-history and strictly causal rolling features.
+
+    node_medians: per-node train medians (from node_train_medians). Training computes them from the train split;
+    the API passes the ones stored in the fitted pipeline, so both build identical features.
+    """
     df = df.copy()
 
     # Sort strictly by timestamp to respect temporal causality
@@ -140,7 +155,19 @@ def engineer_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         .fillna(df["dwell_time_hours"].median())
     )
 
-    # Base allowed numeric and categorical features
+    # eng_ node-relative features: this shipment's value divided by the node's normal (train median) value.
+    if node_medians is None and "split" in df.columns:
+        node_medians = node_train_medians(df)
+    for new_col, base_col in NODE_RELATIVE.items():
+        normal = df["current_node_id"].map(node_medians[base_col]) if node_medians is not None else np.nan
+        df[new_col] = df[base_col] / normal
+
+    # lag_ node-history features: the node's (and destination's) state in the last COMPLETE hour before the snapshot.
+    df = node_history_features(df)
+
+    # Base allowed numeric and categorical features.
+    # cal_month is NOT used: training covers Jan-Sep only, so the model never sees Nov/Dec and treats them like the
+    # September peak (Role 4's experiment: dropping it lowered validation cost clearly).
     numeric_cols = [
         "dwell_time_hours",
         "throughput_teu_per_hr",
@@ -152,12 +179,13 @@ def engineer_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         "historical_delay_rate",
         "cal_hour",
         "cal_dow",
-        "cal_month",
         "eng_util_x_customs",
         "eng_log_dwell",
         "eng_throughput_per_util",
         "eng_labor_x_equipment_gap",
         "roll_node_dwell_mean_24h",
+        *NODE_RELATIVE,
+        *NODE_HISTORY_FEATURES,
     ]
 
     categorical_cols = [
@@ -174,6 +202,21 @@ def engineer_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     assert_features_allowed(all_features)
 
     return df, all_features
+
+
+def fit_xgb_with_train_tail_stopping(params: dict, X: np.ndarray, y: np.ndarray, w: np.ndarray, rounds: int):
+    """Pick the number of trees on the LAST 15% of train (by time), then refit on all of train with that number.
+
+    Earlier versions early-stopped on validation, which validation is also used for when Role 4 picks the
+    champion and the alert threshold, so validation scores came out slightly optimistic. Rows are in time order.
+    """
+    cut = int(len(X) * (1 - EARLY_STOP_TAIL))
+    probe = xgb.XGBClassifier(**params, random_state=42, n_jobs=-1, early_stopping_rounds=rounds, eval_metric="mlogloss")
+    probe.fit(X[:cut], y[:cut], sample_weight=w[:cut], eval_set=[(X[cut:], y[cut:])], verbose=False)
+    trees = int(probe.best_iteration) + 1
+    final = xgb.XGBClassifier(**{**params, "n_estimators": trees}, random_state=42, n_jobs=-1, eval_metric="mlogloss")
+    final.fit(X, y, sample_weight=w, verbose=False)
+    return final, trees
 
 
 # Stage01Pipeline is imported from common.modelkit.pipeline_stage01
@@ -278,14 +321,9 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
     print("\n[Step 2/8] Engineering features and verifying zero-leakage contract...")
     df, feature_cols = engineer_features(raw_df)
 
-    num_cols = [
-        "dwell_time_hours", "throughput_teu_per_hr", "capacity_utilization_pct",
-        "customs_hold_hours", "weather_severity_index", "labor_deficit_ratio",
-        "equipment_availability_pct", "historical_delay_rate", "cal_hour",
-        "cal_dow", "cal_month", "eng_util_x_customs", "eng_log_dwell",
-        "eng_throughput_per_util", "eng_labor_x_equipment_gap", "roll_node_dwell_mean_24h",
-    ]
+    # One list of inputs, defined in engineer_features, so training and the API can never disagree.
     cat_cols = ["priority_tier", "carrier_code", "origin_port", "destination_port", "current_node_id"]
+    num_cols = [c for c in feature_cols if c not in cat_cols]
 
     # 3. Partition data strictly chronologically
     train_df = load_split(df, "train")
@@ -297,6 +335,8 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
     # 4. Fit Preprocessor on Train split ONLY
     pipeline = Stage01Pipeline(fast_mode=fast_mode)
     pipeline.fit_preprocessor(train_df, num_cols, cat_cols)
+    # The node-relative features need the train medians at prediction time too (the API reads them from here).
+    pipeline.node_medians = node_train_medians(raw_df)
 
     X_train = pipeline.transform(train_df, num_cols, cat_cols)
     X_val = pipeline.transform(val_df, num_cols, cat_cols)
@@ -467,21 +507,10 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
 
     print(f"Best XGBoost params from search: {best_xgb_params} (CV score: {best_cv_score:.4f})")
 
-    # Fit tuned XGBoost on full train partition
-    xgb_model = xgb.XGBClassifier(
-        **best_xgb_params,
-        random_state=42,
-        n_jobs=-1,
-        early_stopping_rounds=30 if fast_mode else 50,
-        eval_metric="mlogloss",
-    )
-    xgb_model.fit(
-        X_train,
-        y_train_idx,
-        sample_weight=sample_weights_train,
-        eval_set=[(X_val, y_val_idx)],
-        verbose=False,
-    )
+    # Fit tuned XGBoost on full train partition (number of trees chosen on the train tail, not on validation)
+    stop_rounds = 30 if fast_mode else 50
+    xgb_model, xgb_trees_used = fit_xgb_with_train_tail_stopping(best_xgb_params, X_train, y_train_idx,
+                                                                 sample_weights_train, stop_rounds)
     pipeline.models["xgboost"] = xgb_model
 
     for split_tag, X_sub, df_sub, y_sub in [("val", X_val, val_df, y_val_str), ("test", X_test, test_df, y_test_str)]:
@@ -503,20 +532,8 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
 
     mono_params = dict(best_xgb_params)
     mono_params["monotone_constraints"] = monotone_tuple
-    xgb_mono = xgb.XGBClassifier(
-        **mono_params,
-        random_state=42,
-        n_jobs=-1,
-        early_stopping_rounds=30 if fast_mode else 50,
-        eval_metric="mlogloss",
-    )
-    xgb_mono.fit(
-        X_train,
-        y_train_idx,
-        sample_weight=sample_weights_train,
-        eval_set=[(X_val, y_val_idx)],
-        verbose=False,
-    )
+    xgb_mono, mono_trees_used = fit_xgb_with_train_tail_stopping(mono_params, X_train, y_train_idx,
+                                                                 sample_weights_train, stop_rounds)
     pipeline.models["xgboost_monotone"] = xgb_mono
 
     for split_tag, X_sub, df_sub, y_sub in [("val", X_val, val_df, y_val_str), ("test", X_test, test_df, y_test_str)]:
@@ -661,8 +678,9 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
         },
         hyperparameters={
             "random_forest": {"n_estimators": rf_trees, "max_depth": 12, "min_samples_leaf": 3, "class_weight": "balanced_subsample"},
-            "xgboost": best_xgb_params,
-            "xgboost_monotone": {"monotone_features": ["dwell_time_hours", "customs_hold_hours", "weather_severity_index"], **best_xgb_params},
+            "xgboost": {**best_xgb_params, "trees_used": xgb_trees_used, "early_stopping": "last 15% of train"},
+            "xgboost_monotone": {"monotone_features": ["dwell_time_hours", "customs_hold_hours", "weather_severity_index"],
+                                 **best_xgb_params, "trees_used": mono_trees_used, "early_stopping": "last 15% of train"},
             "lightgbm": lgb_params,
         },
         notes="Champion proposal = lowest validation expected cost (argmax decision). Final choice and alert threshold: "

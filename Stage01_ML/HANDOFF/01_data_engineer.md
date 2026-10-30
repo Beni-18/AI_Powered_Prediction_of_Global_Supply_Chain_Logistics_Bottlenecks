@@ -1,7 +1,7 @@
 # Stage 01 - Role 3 - Data & Integration Engineer -> hand-off note (01_data_engineer.py)
 
 status: READY
-updated_utc: 2026-10-29
+updated_utc: 2026-10-30
 git_commit: see PR "data(stage01): prepared dataset, split and data helpers"
 data_version: v1 (built from simulator v0.2, seed 42)
 
@@ -35,6 +35,13 @@ PASS  Stage01_ML/data/prepared_dataset.csv.gz  (57719 rows, schema 'telemetry')
 - **Duplicates:** 100 exact duplicate rows removed (a feed sent twice). Near-duplicates are only flagged, and there were none.
 - **Overload:** 175 rows have utilisation above 100%. They are kept and marked `overload_flag=True`.
 - **Missing values (CONFLICT, see open questions):** the contract forbids blanks, so each missing feature value is filled with the **train-split median** of its column. The column `was_missing_<col>=True` marks every filled cell. About 400-480 cells per column were filled, and the medians are listed in `data_quality_report.json`.
+
+## Update 2026-10-30 (written by Role 4 at the team lead's request; Pravin to review)
+- `01_data_engineer.py` now **corrects the two dwell reporting faults** Role 2's EDA found, estimating each correction from the data and flagging every changed row (values corrected, never dropped):
+  - ZIM's dwell offset from 1 July: estimated **+4.84 h**, 1,388 rows, flag `dwell_offset_corrected`.
+  - Sensor spikes (dwell above 2.3x the node's previous-hour average; normal 99th percentile is 1.4x): factor **3.00**, 293 rows, flag `dwell_spike_corrected`.
+  - Both are logged under `reporting_corrections` in `data_quality_report.json`. Labels and splits are unchanged.
+- New shared helper `common/dataio/node_context.py`: the node's state from the last COMPLETE hour before a shipment (hourly table), used by the cleaning, the model features and the API. Tests in `tests/data/test_node_context.py`.
 
 ## Things the next role must know (warnings, known issues, changed meanings)
 - **Role 1:** use only the features in `contracts/feature_policy.json`. You *may* also use the `was_missing_*` and `overload_flag` columns, because they are knowable at snapshot time. Never use `dup_flag` or `split` as features.

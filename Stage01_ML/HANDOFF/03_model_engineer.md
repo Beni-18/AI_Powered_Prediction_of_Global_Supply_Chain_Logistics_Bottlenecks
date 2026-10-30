@@ -1,7 +1,7 @@
 # Stage 01 - Role 1 - ML Engineer (model role) -> hand-off note (03_ml_engineer.py)
 
 status: READY
-updated_utc: 2026-10-30T10:22:00Z
+updated_utc: 2026-10-30
 git_commit: HEAD
 data_version: v1
 
@@ -28,6 +28,13 @@ PASS  Stage01_ML/predictions/ml_predictions.csv  (110033 rows, schema 'ml_predic
 - **LightGBM Comparison:** Added `lightgbm` as a comparative tree architecture. It achieves validation expected cost of 0.4067 (and 0.3673 at optimal threshold), confirming tree-based advantage over linear baselines.
 - **Why `xgboost_cal` was dropped:** Post-hoc isotonic calibration on `TimeSeriesSplit` inside train caused severe probability suppression for CRITICAL_DELAY because the early training period had a calmer regime (11.9% critical rate vs 17.2% in val and 17.9% in test). Under the 10:1 cost policy, squashing P(critical) down caused severe false negative penalties (cost 0.770 vs 0.386). We verified that calibrating on late-train slices still yielded an inferior cost (0.675). Following role guidance, unfixable post-hoc calibration was dropped in favor of cost-weighted loss training.
 - **Pipeline in `common.modelkit`:** Migrated `Stage01Pipeline` into `common/modelkit/pipeline_stage01.py` and exported it from `common.modelkit` so Role 3's API can unpickle and serve models directly without importing `03_ml_engineer.py`.
+
+## Update 2026-10-30 (written by Role 4 at the team lead's request; Santhosh to review)
+- **New inputs (77 in total):** `eng_dwell_vs_node`, `eng_util_vs_node` (value / node's train median; medians stored in the pipeline as `node_medians`) and 8 `lag_*` node-history inputs from past hours (`common/dataio/node_context.py`).
+- **`cal_month` removed:** train covers Jan-Sep, so Nov/Dec looked like the September peak. Role 4's controlled experiment: dropping it was the single biggest validation gain.
+- **Early stopping moved off validation:** XGBoost now picks its number of trees on the last 15% of train, then refits on all of train (`fit_xgb_with_train_tail_stopping`). With the re-tuned parameters it used all 250 trees.
+- **One input list:** `run_stage01` takes the numeric inputs from `engineer_features`, so training and the API cannot disagree.
+- **Result:** the new inputs helped logistic regression most; it is now the champion (validation cost 0.310 vs 0.350 for xgboost_monotone). The tree models may now over-fit (learning rate 0.08, all 250 trees): worth re-tuning with a smaller learning rate.
 
 ## Things the next role must know (warnings, known issues, changed meanings)
 - **Role 4 (Evaluation):**

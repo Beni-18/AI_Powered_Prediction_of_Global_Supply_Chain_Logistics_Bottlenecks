@@ -1,7 +1,7 @@
 {
   "a_feature_policy": {
     "status": "PASS",
-    "n_features": 68,
+    "n_features": 77,
     "n_one_hot_columns": 52,
     "illegal_features": []
   },
@@ -14,12 +14,12 @@
   },
   "c_single_feature_ceiling": {
     "status": "PASS",
-    "max_auc": 0.9045473233301963,
-    "max_feature": "dwell_time_hours",
+    "max_auc": 0.9166455284145002,
+    "max_feature": "lag_inventory_level_teu",
     "limit": 0.95,
     "untested_features": [],
     "auc_by_feature": {
-      "dwell_time_hours": 0.9045473233301963,
+      "dwell_time_hours": 0.9080730856431827,
       "throughput_teu_per_hr": 0.6126956015350407,
       "capacity_utilization_pct": 0.8537822567365229,
       "customs_hold_hours": 0.7407701812146189,
@@ -29,12 +29,21 @@
       "historical_delay_rate": 0.7035084772933732,
       "cal_hour": 0.504626223719409,
       "cal_dow": 0.5094564870078813,
-      "cal_month": 0.5192088368435919,
       "eng_util_x_customs": 0.7691841361688763,
-      "eng_log_dwell": 0.9045473233301963,
+      "eng_log_dwell": 0.9080731401700585,
       "eng_throughput_per_util": 0.7412719375252869,
       "eng_labor_x_equipment_gap": 0.6884186006440715,
-      "roll_node_dwell_mean_24h": 0.8604442413621249,
+      "roll_node_dwell_mean_24h": 0.8644391529140798,
+      "eng_dwell_vs_node": 0.8513478498417085,
+      "eng_util_vs_node": 0.8154662756726163,
+      "lag_capacity_utilization_pct": 0.9096124338725314,
+      "lag_avg_dwell_time_hours": 0.899169828316679,
+      "lag_vessels_waiting": 0.8568002102556329,
+      "lag_inventory_level_teu": 0.9166455284145002,
+      "lag_dest_capacity_utilization_pct": 0.5242448300342756,
+      "lag_dest_vessels_waiting": 0.5175169769427653,
+      "lag_util_change_24h": 0.6033890089086009,
+      "lag_queue_change_24h": 0.5791118444370046,
       "priority_tier_CRITICAL_MEDICAL": 0.500234192931354,
       "priority_tier_EXPEDITED": 0.5098224168710516,
       "priority_tier_PERISHABLE_COLD_CHAIN": 0.5082121291763497,
@@ -111,7 +120,7 @@
   },
   "e_too_good_to_be_true": {
     "status": "PASS",
-    "champion_macro_f1": 0.6860561679206251,
+    "champion_macro_f1": 0.6744265642656041,
     "suspect_above": 0.95,
     "verdict": "plausible"
   },

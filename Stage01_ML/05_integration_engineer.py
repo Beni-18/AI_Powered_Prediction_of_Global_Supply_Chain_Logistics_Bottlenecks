@@ -194,7 +194,8 @@ class Service:
             return [_stub_answer(r) for r in rows]
         frame = pd.DataFrame([r.model_dump() for r in rows])
         frame["timestamp"] = frame["timestamp"].fillna(pd.Timestamp.now(tz="UTC").strftime(TS_FORMAT))
-        features, _ = self.role1.engineer_features(frame)
+        # Same features as training: node-relative inputs use the train medians stored in the fitted pipeline.
+        features, _ = self.role1.engineer_features(frame, node_medians=getattr(self.pipeline, "node_medians", None))
         # A request carries no history of its own, so the rolling dwell is rebuilt from the records before it.
         features["roll_node_dwell_mean_24h"] = [
             self._rolling_dwell(rid, n, ts) for rid, n, ts in zip(frame["record_id"], frame["current_node_id"], frame["timestamp"])]

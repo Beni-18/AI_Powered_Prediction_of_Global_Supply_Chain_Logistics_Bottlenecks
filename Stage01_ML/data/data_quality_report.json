@@ -27,10 +27,23 @@
     "historical_delay_rate": 0
   },
   "overload_rows": 160,
+  "reporting_corrections": {
+    "dwell_offset": {
+      "carrier": "ZIM",
+      "from": "2025-07-01",
+      "estimated_offset_hours": 4.836,
+      "rows": 1388
+    },
+    "dwell_spikes": {
+      "rule": "dwell > 2.3x node previous-hour average",
+      "estimated_factor": 3.004,
+      "rows": 293
+    }
+  },
   "missing_filled_with_train_median": {
     "dwell_time_hours": {
       "rows": 436,
-      "median": 32.904
+      "median": 32.705
     },
     "throughput_teu_per_hr": {
       "rows": 421,
@@ -65,6 +78,8 @@
   "extra_columns": [
     "dup_flag",
     "overload_flag",
+    "dwell_offset_corrected",
+    "dwell_spike_corrected",
     "was_missing_dwell_time_hours",
     "was_missing_throughput_teu_per_hr",
     "was_missing_capacity_utilization_pct",

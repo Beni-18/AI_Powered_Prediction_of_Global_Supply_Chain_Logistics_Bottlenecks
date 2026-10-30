@@ -48,3 +48,8 @@ validation: **alert when P(critical) >= 0.32**. On the test period it catches 82
 per 100 alerts (inside the budget of 40). The cost policy and the alert budget are unchanged.
 Numbers: `Stage01_ML/reports/eval_champion.json`, `eval_metrics.json`, `eval_threshold_sensitivity.csv`.
 
+## Amendment 2 (2026-10-30): data and feature changes (decision 0009), threshold re-chosen by the same rule
+After the data corrections and new inputs of decision 0009, logistic regression has the lowest validation cost and
+is champion again. Re-chosen on validation: **alert when P(critical) >= 0.34**. On the test period it catches 82.8% of
+critical delays with 39.6 false alarms per 100 alerts (inside the budget of 40). The cost policy is unchanged.
+
