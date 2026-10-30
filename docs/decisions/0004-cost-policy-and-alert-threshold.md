@@ -1,5 +1,5 @@
 # 0004 - Cost policy and the Stage 1 alert threshold
-Date: 2026-10-30   Deciders: Role 4 (proposer), Roles 1, 2, 3   Status: PROPOSED (needs the Team Huddle vote below)
+Date: 2026-10-30   Deciders: Roles 1, 2, 3, 4 (Team Huddle)   Status: ACCEPTED (Team Huddle, 2026-10-30)
 
 ## Context
 The problem statement's Stage 1 Team Huddle asks: what false-alarm level is acceptable? Answering with a gut
@@ -23,7 +23,7 @@ All numbers below are copied from `Stage01_ML/reports/eval_threshold_sensitivity
 - **10x (proposed):** catches about 4 in 5 critical delays and stays inside the soft budget of 40 false alarms per 100 alerts.
 - **Higher ratio (20x-40x):** catches almost every critical delay, but 6-7 of every 10 alerts are false, so planners will start ignoring them.
 
-## Decision (proposed)
+## Decision
 - Keep `cost_policy.json` v1.0 as it is: miss = 10, false alarm = 1, soft budget 40 false alarms per 100 alerts.
 - Alert when P(critical) >= **0.37** with the champion `logreg` (from `Stage01_ML/reports/eval_champion.json`).
 - Re-check the threshold whenever the champion model changes (it is re-chosen on validation automatically).
@@ -33,10 +33,10 @@ All numbers below are copied from `Stage01_ML/reports/eval_threshold_sensitivity
 - Planners get about 6 real alerts for every 4 false ones; the field guide explains why that trade is worth it.
 - What we give up: about 1 in 5 critical delays is still missed, and the chokepoints (Suez, Malacca, Panama) are weakest.
 
-## Vote (fill in at the Team Huddle, then set Status to ACCEPTED)
+## Vote (Team Huddle, 2026-10-30)
 | Role | Name | Agree? |
 |---|---|---|
-| 1 ML | Santhosh K | |
-| 2 EDA | T.R. Isha Miruthika | |
-| 3 Data & Integration | Pravin | |
+| 1 ML | Santhosh K | yes |
+| 2 EDA | T.R. Isha Miruthika | yes |
+| 3 Data & Integration | Pravin | yes |
 | 4 Evaluation | Bennish Christopher | yes |
