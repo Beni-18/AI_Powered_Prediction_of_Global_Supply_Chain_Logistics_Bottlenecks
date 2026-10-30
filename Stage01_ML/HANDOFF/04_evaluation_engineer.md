@@ -2,15 +2,15 @@
 
 status: READY
 updated_utc: 2026-10-30
-git_commit: see PR from branch ml/stage01-improve
-data_version: v1.1 (prepared_dataset.csv.gz with dwell corrections; train 42,000 / val 7,820 / test 7,899)
+git_commit: see PR from branch data/real-calibration
+data_version: v2 (SIM v0.3 driven by real weather, PortWatch traffic and size, GSCPI; train 42,000 / val 7,824 / test 7,894)
 
 > Allowed status values: NOT_STARTED, IN_PROGRESS, READY, BLOCKED.
 > Only the role named in the title edits this file. Everyone else only reads it.
 > Set READY only AFTER the contract check below passes and your work is pushed.
 
 ## Files produced (path | contract | rows | notes)
-- `Stage01_ML/reports/eval_champion.json` | - | 1 | **Role 3 reads this**: model `logreg`, alert threshold `0.34`, chosen on val
+- `Stage01_ML/reports/eval_champion.json` | - | 1 | **Role 3 reads this**: model `logreg`, alert threshold `0.39`, chosen on val
 - `Stage01_ML/reports/eval_metrics.json`, `eval_model_comparison.csv/png` | - | 7 models | test metrics with 95% day-block bootstrap intervals (1,000 resamples)
 - `Stage01_ML/reports/eval_threshold_decision.md`, `eval_cost_curve.png`, `eval_threshold_sensitivity.csv` | - | - | alert threshold and its sensitivity to the miss cost
 - `Stage01_ML/reports/eval_confusion.png`, `eval_calibration.png`, `eval_slices.csv/png`, `eval_anomaly.json`, `eval_leakage_tests.json`, `eval_api_latency.json`
@@ -23,15 +23,15 @@ split, labels and row sets match the frozen prepared dataset for all 7 models (n
 ```
 
 ## Decisions and assumptions (what you decided and why, in plain English)
-- **What changed (decision 0009):** corrected the two dwell reporting faults, removed `cal_month`, added node-relative and past-hour node-history inputs, and moved XGBoost's early stopping off validation. Each change came from a controlled experiment that changed one thing at a time and judged it on validation cost only.
-- **Champion: `logreg`** (lowest validation cost, 0.310). The tree models are clearly worse on validation with the new inputs (xgboost_monotone +0.039 per shipment, 95% range +0.023 to +0.057), so the rule keeps the simpler model.
-- **Alert threshold 0.34** (re-chosen on validation, as decision 0004 requires). On test: cost **0.369** per shipment (previous champion 0.408), **82.8%** of critical delays caught (was 81.8%), **39.6** false alarms per 100 alerts (budget 40), PR-AUC **0.829** (was 0.814).
-- **Leakage tests: PASS** on all 77 model inputs (Role 1's test feature matrix); the strongest single input is the node's previous-hour inventory at AUC 0.917 (< 0.95). It comes from a completed past hour, which the feature policy's `lag_` rule allows.
-- **Reproducibility:** a fresh clone reproduces the data, every prediction, the champion and every claim exactly with Role 1's library versions (Python 3.13, numpy 2.3.4, pandas 2.3.3, scikit-learn 1.8.0, xgboost 3.1.3, lightgbm 4.7.0).
+- **Data v2 (decision 0010):** the simulator is now driven by real data (Open-Meteo hourly weather, IMF PortWatch busy months and port size, NY Fed GSCPI). Shipment outcomes are still simulated, so rows stay `SYNTHETIC_CALIBRATED`. Numbers are not comparable with the earlier data.
+- **Champion: `logreg`** at alert threshold **0.39** (chosen on validation). XGBoost is slightly cheaper on validation (0.006 per shipment) but its 95% range (-0.006 to +0.019) includes zero, so the simpler model stays.
+- **Test period:** 77.3% of critical delays caught, **40.1** false alarms per 100 alerts (0.1 over the soft budget of 40), cost 0.337 per shipment, PR-AUC 0.762. XGBoost would sit at 79.8% caught and 37.4 false alarms per 100 alerts.
+- **Leakage tests: PASS** on all 77 model inputs; strongest single input: the node's previous-hour utilisation, AUC 0.908.
+- **Reproducibility:** a fresh clone regenerates the simulator data and reproduces the cleaned data, every prediction, the champion and every claim exactly with Role 1's library versions.
 
 ## Things the next role must know (warnings, known issues, changed meanings)
-- **Role 3:** the API serves `logreg` at 0.34 automatically; checked over real HTTP: p95 14 ms, 0 errors, every answer has `requires_operator_review`. The field guide is regenerated; the PDF needs re-exporting. Please pin the ML library versions in `requirements.txt`.
-- **Role 1:** the tree models may now over-fit (learning rate 0.08, all 250 trees used); a re-tune with a smaller learning rate could beat logreg again. Any new model is re-evaluated in about 10 seconds.
+- **Role 3:** the API serves `logreg` at 0.39 automatically; checked over real HTTP: p95 15 ms, 0 errors, every answer has `requires_operator_review`. The field guide is regenerated; the PDF needs re-exporting. Please pin the ML library versions in `requirements.txt`.
+- **Role 1:** on the real-driven data XGBoost is close to logreg on validation (0.006 cheaper, not clear); more tuning or more training data could make the gain clear. Any new model is re-evaluated in about 10 seconds.
 - **Role 2:** chokepoints are still the weak spot; compare `eval_slices.csv` with your `eda_error_slices.csv`.
 
 ## Open questions for other roles (name the role and the question)

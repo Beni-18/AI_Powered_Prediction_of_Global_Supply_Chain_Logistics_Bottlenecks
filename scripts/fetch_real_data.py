@@ -42,6 +42,8 @@ PORTS_ITEM = "83b1bbc7b3354c5fb1f40673bb8f852e"    # Daily_Ports_Data
 CHOKES_ITEM = "3da2b9ca97684916b75c4013f95d18ab"   # Daily_Chokepoints_Data
 GSCPI_URL = "https://www.newyorkfed.org/medialibrary/research/interactives/gscpi/downloads/gscpi_data.xlsx"
 OPEN_METEO = "https://archive-api.open-meteo.com/v1/archive"
+# The simulator covers 2025 plus 60 days of 2026 (common/dataio/simulator.py), so the weather must too.
+WEATHER_START, WEATHER_END = "2025-01-01", "2026-03-01"
 
 # Our node id -> PortWatch port id (looked up in PortWatch_ports_database on 29 Oct 2026).
 # Los Angeles and Long Beach are ONE port in PortWatch ("Los Angeles-Long Beach"), so both share it.
@@ -195,16 +197,16 @@ def fetch_gscpi(refresh: bool) -> pd.DataFrame:
 
 
 def fetch_weather(nodes: pd.DataFrame, refresh: bool) -> pd.DataFrame:
-    """Hourly 2025 wind gusts and rain at every node, plus the weather_severity_index from the role file."""
+    """Hourly wind gusts and rain at every node (WEATHER_START..WEATHER_END), plus the weather_severity_index."""
     folder = RAW_DIR / "open_meteo"
     folder.mkdir(exist_ok=True)
     parts = []
     for node in nodes.itertuples():
-        path = folder / f"{node.node_id}.json"
+        path = folder / f"{node.node_id}_{WEATHER_START}_{WEATHER_END}.json"
         if refresh or not path.exists():
             print(f"  Open-Meteo {node.node_id} ...")
-            data = get_json(OPEN_METEO, {"latitude": node.lat, "longitude": node.lon, "start_date": "2025-01-01",
-                                         "end_date": "2025-12-31", "hourly": "wind_gusts_10m,precipitation",
+            data = get_json(OPEN_METEO, {"latitude": node.lat, "longitude": node.lon, "start_date": WEATHER_START,
+                                         "end_date": WEATHER_END, "hourly": "wind_gusts_10m,precipitation",
                                          "timezone": "UTC"})
             path.write_text(json.dumps(data))
             time.sleep(1)  # be polite to the free API
@@ -223,10 +225,16 @@ def main() -> int:
     """Download all sources (or use the cache) and write the calibration files."""
     parser = argparse.ArgumentParser(description="Fetch real data and build calibration files.")
     parser.add_argument("--refresh", action="store_true", help="download again even if cached")
+    parser.add_argument("--weather-only", action="store_true", help="only (re)build weather_hourly.csv.gz")
     args = parser.parse_args()
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     CAL_DIR.mkdir(parents=True, exist_ok=True)
     nodes = pd.read_csv(NODES_CSV)
+    if args.weather_only:
+        fetch_weather(nodes, args.refresh).to_csv(CAL_DIR / "weather_hourly.csv.gz", index=False,
+                                                  compression={"method": "gzip", "mtime": 0})
+        print(f"wrote {(CAL_DIR / 'weather_hourly.csv.gz').relative_to(REPO_ROOT)}")
+        return 0
 
     # Step 1: port and chokepoint activity from IMF PortWatch.
     ports, chokes = fetch_portwatch(args.refresh)

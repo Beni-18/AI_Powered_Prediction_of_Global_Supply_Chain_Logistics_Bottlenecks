@@ -79,11 +79,17 @@ def _event_shape(length: int) -> np.ndarray:
     return shape
 
 
-def sample_events(nodes: pd.DataFrame, total_hours: int, rng: np.random.Generator) -> pd.DataFrame:
-    """Draw random disruption events for every node from the event catalogue."""
+def sample_events(nodes: pd.DataFrame, total_hours: int, rng: np.random.Generator,
+                  skip_types: tuple = ()) -> pd.DataFrame:
+    """Draw random disruption events for every node from the event catalogue.
+
+    skip_types: event types to leave out, e.g. ("STORM",) when real weather already contains the real storms.
+    """
     rows = []
     years = total_hours / 8760
     for etype, spec in EVENT_CATALOGUE.items():
+        if etype in skip_types:
+            continue
         for _, node in nodes[nodes["node_type"].isin(spec["types"])].iterrows():
             # Poisson count: on average `rate` events per node per year.
             for _ in range(rng.poisson(spec["rate"] * years)):
@@ -111,9 +117,20 @@ def _ar1(n_hours: int, n_nodes: int, phi: float, sigma: float, rng: np.random.Ge
     return out
 
 
+# How strongly the REAL drivers push congestion (chosen so each has the same size of effect as the synthetic
+# stand-in it replaces): a month with 10% more real traffic adds 0.08 to the congestion target, like the old
+# synthetic peak; one GSCPI standard deviation adds 0.06.
+REAL_PEAK_SCALE = 0.8
+REAL_GSCPI_SCALE = 0.06
+
+
 def simulate_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFrame,
-                   rng: np.random.Generator) -> dict:
-    """Simulate every node for every hour. Returns a dict of (hours x nodes) arrays."""
+                   rng: np.random.Generator, real: dict | None = None) -> dict:
+    """Simulate every node for every hour. Returns a dict of (hours x nodes) arrays.
+
+    real: real drivers from common.dataio.calibration.real_drivers (weather, monthly traffic, size, GSCPI).
+          When given, they replace the synthetic weather, peak season, global stress and node size.
+    """
     H = SIM_HOURS + EXTRA_HOURS
     N = len(nodes)
     idx = {nid: i for i, nid in enumerate(nodes["node_id"])}
@@ -125,6 +142,9 @@ def simulate_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFram
     typhoon = (nodes["region"].eq("East Asia").to_numpy()[None, :]
                * 0.8 * np.exp(-((day_of_year - 245) / 35.0) ** 2)[:, None])     # peaks early Sept
     weather = season + typhoon + _ar1(H, N, 0.98, 0.15, rng)
+    if real is not None:
+        # Real hourly weather at each node (Open-Meteo); real storms are already in it.
+        weather = real["weather"].copy()
 
     # --- 2. Slow drivers around their calm-day level (AR(1) keeps them realistic and smooth).
     labor = 0.03 + _ar1(H, N, 0.995, 0.004, rng)
@@ -139,7 +159,8 @@ def simulate_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFram
         span = slice(ev.start_h, ev.end_h)
         s = _event_shape(ev.end_h - ev.start_h) * ev.severity
         if ev.type == "STORM":
-            weather[span, j] += 6.0 * s
+            if real is None:  # with real weather the real storms are already there
+                weather[span, j] += 6.0 * s
         elif ev.type == "LABOR_STRIKE":
             labor[span, j] += 0.55 * s
         elif ev.type == "CUSTOMS_SURGE":
@@ -168,6 +189,12 @@ def simulate_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFram
     # until scripts/fetch_real_data.py provides the real monthly values).
     peak = 0.08 * np.exp(-((day_of_year - 260) / 40.0) ** 2)
     global_stress = 0.03 * np.sin(2 * np.pi * day_of_year / 365 + 1.0)
+    if real is not None:
+        # Real busy months per node (PortWatch traffic vs the node's yearly mean) and the real monthly GSCPI.
+        peak = REAL_PEAK_SCALE * (real["month_factor"] - 1.0)
+        global_stress = REAL_GSCPI_SCALE * real["gscpi"]
+    peak = np.broadcast_to(np.asarray(peak, dtype=float).reshape(H, -1), (H, N))
+    global_stress = np.broadcast_to(np.asarray(global_stress, dtype=float).reshape(H, -1), (H, N))
 
     # --- 5. Upstream lanes: for each node, which nodes feed it and after how many hours.
     incoming = {j: [] for j in range(N)}
@@ -195,6 +222,11 @@ def simulate_nodes(nodes: pd.DataFrame, edges: pd.DataFrame, events: pd.DataFram
     # --- 7. Turn hidden congestion into the observable channels the contracts ask for.
     base = {k: nodes["node_type"].map(lambda t: NODE_TYPE_BASE[t][k]).to_numpy()[None, :]
             for k in ("dwell", "throughput", "yard")}
+    if real is not None:
+        # Big real ports move more boxes and have bigger yards (PortWatch size relative to the average node).
+        size = np.clip(real["relative_size"], 0.2, 5.0)[None, :]
+        base["throughput"] = base["throughput"] * size
+        base["yard"] = base["yard"] * size
     util = np.clip(45.0 + 40.0 * c, 0, 150)            # utilisation can exceed 100 = real overload
     dwell = np.clip(base["dwell"] * (0.4 + 2.0 * c), 0, 400)
     # Throughput rises with demand until about 100% utilisation, then collapses under gridlock.

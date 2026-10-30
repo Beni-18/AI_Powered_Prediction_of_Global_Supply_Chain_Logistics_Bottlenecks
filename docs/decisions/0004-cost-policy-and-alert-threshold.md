@@ -53,3 +53,8 @@ After the data corrections and new inputs of decision 0009, logistic regression 
 is champion again. Re-chosen on validation: **alert when P(critical) >= 0.34**. On the test period it catches 82.8% of
 critical delays with 39.6 false alarms per 100 alerts (inside the budget of 40). The cost policy is unchanged.
 
+## Amendment 3 (2026-10-30): data driven by real sources (decision 0010)
+On the real-driven data, logistic regression stays champion and the threshold, re-chosen on validation, is
+**0.39**. On the test period it catches 77.3% of critical delays with 40.1 false alarms per 100 alerts, 0.1 above
+the soft budget of 40; the budget is a discussion line, not a hard stop. The cost policy is unchanged.
+

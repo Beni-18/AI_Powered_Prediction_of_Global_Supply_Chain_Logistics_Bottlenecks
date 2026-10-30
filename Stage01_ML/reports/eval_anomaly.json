@@ -1,8 +1,8 @@
 {
   "status": "OK",
-  "roc_auc_critical": 0.8775327461152327,
-  "pr_auc_critical": 0.6652166597867267,
-  "precision_at_k_1414": 0.6230551626591231,
-  "critical_missed_by_classifier": 243,
-  "of_those_flagged_by_detector": 18
+  "roc_auc_critical": 0.8735313541623446,
+  "pr_auc_critical": 0.6104375123215424,
+  "precision_at_k_1008": 0.6130952380952381,
+  "critical_missed_by_classifier": 229,
+  "of_those_flagged_by_detector": 32
 }

@@ -1,12 +1,12 @@
 {
-  "model_name": "logreg",
+  "model_name": "xgboost_monotone",
   "model_version": "v1.1",
-  "created_utc": "2026-10-30T06:06:27.920928+00:00",
+  "created_utc": "2026-10-30T06:53:06.024410+00:00",
   "seed": 42,
   "train_window": {
     "rows": 42000,
-    "val_rows": 7820,
-    "test_rows": 7899
+    "val_rows": 7824,
+    "test_rows": 7894
   },
   "feature_count": 77,
   "features": [
@@ -89,9 +89,9 @@
     "current_node_id_RAIL_US_CHI_BNSF"
   ],
   "metrics_on_val": {
-    "macro_f1": 0.7096,
+    "macro_f1": 0.6379,
     "fast_mode": false,
-    "training_duration_seconds": 88.92
+    "training_duration_seconds": 89.98
   },
   "hyperparameters": {
     "random_forest": {
@@ -103,9 +103,9 @@
     "xgboost": {
       "objective": "multi:softprob",
       "num_class": 3,
-      "learning_rate": 0.08,
+      "learning_rate": 0.03,
       "max_depth": 6,
-      "subsample": 0.9,
+      "subsample": 0.8,
       "colsample_bytree": 0.7,
       "min_child_weight": 5.0,
       "gamma": 0.2,
@@ -121,9 +121,9 @@
       ],
       "objective": "multi:softprob",
       "num_class": 3,
-      "learning_rate": 0.08,
+      "learning_rate": 0.03,
       "max_depth": 6,
-      "subsample": 0.9,
+      "subsample": 0.8,
       "colsample_bytree": 0.7,
       "min_child_weight": 5.0,
       "gamma": 0.2,
@@ -134,10 +134,10 @@
     "lightgbm": {
       "objective": "multiclass",
       "num_class": 3,
-      "learning_rate": 0.08,
+      "learning_rate": 0.03,
       "max_depth": 6,
       "num_leaves": 63,
-      "subsample": 0.9,
+      "subsample": 0.8,
       "colsample_bytree": 0.7,
       "n_estimators": 250
     }
@@ -157,49 +157,49 @@
   "notes": "Champion proposal = lowest validation expected cost (argmax decision). Final choice and alert threshold: Stage01_ML/reports/eval_champion.json (Role 4).",
   "candidates": [
     {
-      "model_name": "logreg",
-      "is_baseline": true,
-      "val_macro_f1": 0.7096,
-      "val_expected_cost": 0.3252
-    },
-    {
       "model_name": "xgboost_monotone",
       "is_baseline": false,
-      "val_macro_f1": 0.7165,
-      "val_expected_cost": 0.3734
+      "val_macro_f1": 0.6379,
+      "val_expected_cost": 0.3192
     },
     {
       "model_name": "xgboost",
       "is_baseline": false,
-      "val_macro_f1": 0.7189,
-      "val_expected_cost": 0.3748
+      "val_macro_f1": 0.636,
+      "val_expected_cost": 0.3214
     },
     {
       "model_name": "lightgbm",
       "is_baseline": false,
-      "val_macro_f1": 0.7216,
-      "val_expected_cost": 0.3813
+      "val_macro_f1": 0.6323,
+      "val_expected_cost": 0.3279
+    },
+    {
+      "model_name": "logreg",
+      "is_baseline": true,
+      "val_macro_f1": 0.6437,
+      "val_expected_cost": 0.3285
     },
     {
       "model_name": "random_forest",
       "is_baseline": false,
-      "val_macro_f1": 0.7158,
-      "val_expected_cost": 0.4107
+      "val_macro_f1": 0.6573,
+      "val_expected_cost": 0.35
     },
     {
       "model_name": "rule_dwell",
       "is_baseline": true,
-      "val_macro_f1": 0.5602,
-      "val_expected_cost": 0.5513
+      "val_macro_f1": 0.4997,
+      "val_expected_cost": 0.4566
     },
     {
       "model_name": "majority",
       "is_baseline": true,
-      "val_macro_f1": 0.2253,
-      "val_expected_cost": 2.3581
+      "val_macro_f1": 0.2752,
+      "val_expected_cost": 1.3597
     }
   ],
-  "champion_proposal": "logreg",
+  "champion_proposal": "xgboost_monotone",
   "tuning_search_space": {
     "learning_rate": [
       0.03,
@@ -241,13 +241,13 @@
   "tuning_best_params": {
     "objective": "multi:softprob",
     "num_class": 3,
-    "learning_rate": 0.08,
+    "learning_rate": 0.03,
     "max_depth": 6,
-    "subsample": 0.9,
+    "subsample": 0.8,
     "colsample_bytree": 0.7,
     "min_child_weight": 5.0,
     "gamma": 0.2,
     "n_estimators": 250
   },
-  "tuning_best_cv_score": 0.9854
+  "tuning_best_cv_score": 1.1155
 }

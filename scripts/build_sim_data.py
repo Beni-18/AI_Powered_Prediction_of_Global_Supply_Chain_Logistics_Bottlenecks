@@ -23,6 +23,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from common.dataio import simulator as sim  # noqa: E402
+from common.dataio.calibration import real_drivers  # noqa: E402
 from common.paths import REPO_ROOT  # noqa: E402
 from common.seed import set_global_seed  # noqa: E402
 
@@ -88,6 +89,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--n-shipments", type=int, default=60000)
+    parser.add_argument("--synthetic-drivers", action="store_true",
+                        help="use the old made-up weather/season/stress instead of the real calibration data")
     args = parser.parse_args()
     set_global_seed(args.seed)
     rng = np.random.default_rng(args.seed)
@@ -95,11 +98,15 @@ def main() -> int:
 
     # Step 1: load the trade network and sample disruption events for the whole simulated period.
     nodes, edges = sim.load_network()
-    events = sim.sample_events(nodes, sim.SIM_HOURS + sim.EXTRA_HOURS, rng)
+    # Real drivers (weather, monthly traffic, port size, GSCPI) unless the old synthetic ones are asked for.
+    hours = sim.SIM_START + pd.to_timedelta(np.arange(sim.SIM_HOURS + sim.EXTRA_HOURS), unit="h")
+    real = None if args.synthetic_drivers else real_drivers(hours, list(nodes["node_id"]))
+    print("drivers:", "synthetic" if real is None else "REAL (Open-Meteo weather, PortWatch traffic and size, NY Fed GSCPI)")
+    events = sim.sample_events(nodes, sim.SIM_HOURS + sim.EXTRA_HOURS, rng, skip_types=() if real is None else ("STORM",))
     print(f"events sampled: {len(events)}")
 
     # Step 2: simulate every node hour by hour (this is the slow part, about a minute).
-    state = sim.simulate_nodes(nodes, edges, events, rng)
+    state = sim.simulate_nodes(nodes, edges, events, rng, real=real)
     print("node simulation done")
 
     # Step 3: sample shipments and read their realised delay from the future node states.
@@ -169,6 +176,7 @@ def main() -> int:
     (OUT_DIR / "sim_summary.json").write_text(json.dumps({
         "seed": args.seed, "n_shipments_raw": len(ship), "n_events": len(events),
         "n_hourly_rows": len(hourly), "hidden_scale": HIDDEN_SCALE,
+        "drivers": "synthetic" if real is None else "real: weather_hourly, activity_profile, gscpi_monthly",
         "class_mix_before_planting": mix}, indent=2))
     print(f"wrote {len(ship)} shipments, {len(hourly)} node-hours to {OUT_DIR}")
     return 0
