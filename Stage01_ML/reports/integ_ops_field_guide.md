@@ -10,18 +10,18 @@
 | CRITICAL_DELAY | Expected delay of 24 hours or more: act [1] |
 
 ## When the tool raises an alert
-- Alert when the chance of CRITICAL is **34% or more** (model `logreg`) [2].
-- On held-out data it caught **83%** of critical delays; **40 of every 100 alerts** were false alarms [3].
+- Alert when the chance of CRITICAL is **39% or more** (model `logreg`) [2].
+- On held-out data it caught **77%** of critical delays; **40 of every 100 alerts** were false alarms [3].
 - Why accept false alarms: a missed critical delay costs **10x** an unnecessary escalation (1 unit) [4].
 
 ## Top five drivers of a CRITICAL prediction [5]
 (Ranked by Role 1's SHAP analysis of the XGBoost model; the served model may weigh them slightly differently, and each API answer lists its own top drivers.)
 
-1. `lag_capacity_utilization_pct`
-2. `lag_inventory_level_teu`
-3. `eng_labor_x_equipment_gap`
-4. `weather_severity_index`
-5. `equipment_availability_pct`
+1. `dwell_time_hours`
+2. `lag_capacity_utilization_pct`
+3. `eng_log_dwell`
+4. `equipment_availability_pct`
+5. `lag_avg_dwell_time_hours`
 
 In plain words (Role 2):
 
