@@ -163,13 +163,34 @@ def validate_and_score(records: list) -> tuple:
 
 
 @st.cache_data
+def official_predictions(split: str) -> pd.DataFrame:
+    """The champion's evaluated predictions for one period (Role 1's file, the numbers Role 4 reports)."""
+    champion = read_json(stage_path(1, "reports", "eval_champion.json"))
+    path = stage_path(1, "predictions", "ml_predictions.csv")
+    if not champion or not path.exists():
+        return pd.DataFrame()
+    pred = pd.read_csv(path, usecols=["record_id", "split", "model_name", "y_pred", "p_critical"])
+    return pred[(pred["model_name"] == champion["model_name"]) & (pred["split"] == split)].set_index("record_id")
+
+
+@st.cache_data
 def scored_period(split: str) -> pd.DataFrame:
-    """Score every shipment of one period once, with the real outcome next to the model's answer."""
+    """Every shipment of one period with the model's answer and the real outcome.
+
+    Risk, label and alert come from the official predictions file, so the dashboard shows exactly the numbers in the
+    evaluation report; the API scoring adds the per-shipment reasons and the unusual-shipment flag.
+    """
     rows = shipments()
     rows = rows[rows["split"] == split]
     answers, _ = validate_and_score(rows.to_dict(orient="records"))
     table = pd.DataFrame(answers)
     table["p_critical"] = table["probabilities"].map(lambda p: p["CRITICAL_DELAY"])
+    official = official_predictions(split)
+    if len(official):
+        threshold = float(read_json(stage_path(1, "reports", "eval_champion.json"))["threshold"])
+        table["p_critical"] = table["record_id"].map(official["p_critical"]).fillna(table["p_critical"])
+        table["label"] = table["record_id"].map(official["y_pred"]).fillna(table["label"])
+        table["alert"] = table["p_critical"] >= threshold
     table["reasons"] = table["top_drivers"].map(lambda d: " · ".join(feature_label(x) for x in d))
     real = rows.set_index("record_id")[["timestamp", "delay_status", "realized_delay_hours", "carrier_code",
                                         "priority_tier", "origin_port", "destination_port"]]
