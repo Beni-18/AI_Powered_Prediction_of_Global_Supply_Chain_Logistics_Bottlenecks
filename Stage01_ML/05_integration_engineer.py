@@ -145,7 +145,7 @@ class Service:
         self.model = self.pipeline.models[self.model_name]
         self.detector = self.pipeline.models.get("isolation_forest")
         self.num_cols, self.cat_cols = self._feature_columns()
-        self.history = self._recent_node_dwell()
+        self.history = self._node_dwell_history()
         self.global_drivers = _global_drivers()
 
     def _feature_columns(self) -> tuple:
@@ -154,13 +154,39 @@ class Service:
         cat_cols = list(self.pipeline.encoder.feature_names_in_)
         return num_cols, cat_cols
 
-    def _recent_node_dwell(self) -> dict:
-        """Last 24 dwell values per node from the prepared dataset, used to build the rolling-dwell feature."""
+    def _node_dwell_history(self) -> dict:
+        """Every node's dwell readings in time order, plus where each known record sits, for the rolling-dwell feature.
+
+        Role 1 built roll_node_dwell_mean_24h as the mean of the 24 records at the same node BEFORE the shipment
+        (file order, which is time order). To give the same score as the evaluated predictions, the API rebuilds it
+        the same way instead of using one fixed "latest" value for every shipment.
+        """
         path = stage_path(STAGE, "data", "prepared_dataset.csv.gz")
         if not path.exists():
             return {}
-        df = pd.read_csv(path, usecols=["timestamp", "current_node_id", "dwell_time_hours"]).sort_values("timestamp")
-        return {node: list(g["dwell_time_hours"].tail(ROLLING_WINDOW)) for node, g in df.groupby("current_node_id")}
+        df = pd.read_csv(path, usecols=["record_id", "timestamp", "current_node_id", "dwell_time_hours"])
+        history = {"by_node": {}, "position": {}, "median": float(df["dwell_time_hours"].median())}
+        for node, g in df.groupby("current_node_id", sort=False):
+            # Times as plain UTC datetime64 (no zone object), so they can be binary-searched.
+            times = pd.to_datetime(g["timestamp"], utc=True).dt.tz_convert(None).to_numpy(dtype="datetime64[ns]")
+            history["by_node"][node] = (times, g["dwell_time_hours"].to_numpy())
+            history["position"].update({rid: (node, i) for i, rid in enumerate(g["record_id"])})
+        return history
+
+    def _rolling_dwell(self, record_id, node: str, timestamp: str) -> float:
+        """Mean dwell of the previous 24 records at this node, as Role 1 computed it (median when there are none)."""
+        if not self.history or node not in self.history["by_node"]:
+            return self.history.get("median", float("nan")) if self.history else float("nan")
+        times, dwell = self.history["by_node"][node]
+        known = self.history["position"].get(record_id)
+        if known and known[0] == node:
+            end = known[1]  # a shipment from the dataset: exactly the records before it
+        else:
+            # A new shipment: every record at the node that happened before its timestamp.
+            moment = pd.Timestamp(timestamp).tz_convert("UTC").tz_localize(None).to_datetime64().astype("datetime64[ns]")
+            end = int(np.searchsorted(times, moment, side="left"))
+        window = dwell[max(0, end - ROLLING_WINDOW):end]
+        return float(window.mean()) if len(window) else self.history["median"]
 
     def score(self, rows: list) -> list:
         """Score shipments with the champion model and return contract-shaped answers."""
@@ -169,10 +195,9 @@ class Service:
         frame = pd.DataFrame([r.model_dump() for r in rows])
         frame["timestamp"] = frame["timestamp"].fillna(pd.Timestamp.now(tz="UTC").strftime(TS_FORMAT))
         features, _ = self.role1.engineer_features(frame)
-        # A single request has no history of its own, so the rolling dwell comes from the node's recent records.
+        # A request carries no history of its own, so the rolling dwell is rebuilt from the records before it.
         features["roll_node_dwell_mean_24h"] = [
-            float(np.mean(self.history[n])) if self.history.get(n) else float(d)
-            for n, d in zip(frame["current_node_id"], frame["dwell_time_hours"])]
+            self._rolling_dwell(rid, n, ts) for rid, n, ts in zip(frame["record_id"], frame["current_node_id"], frame["timestamp"])]
         X = self.pipeline.transform(features, self.num_cols, self.cat_cols)
         proba = self.model.predict_proba(X)
         anomalous = self.detector.predict(X) == -1 if self.detector is not None else np.zeros(len(X), dtype=bool)
