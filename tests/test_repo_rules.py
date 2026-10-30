@@ -115,7 +115,9 @@ def test_stub_scripts_exit_with_not_implemented_code():
 
 
 def test_run_pipeline_skips_stubs_without_failing():
-    result = subprocess.run([sys.executable, "run_pipeline.py", "--stage", "1"], cwd=REPO_ROOT, capture_output=True, text=True)
+    # Stage 5 is still all stubs. Stage 1 is implemented now, and running it here would rewrite the team's committed
+    # predictions, reports and ledger every time someone runs the tests.
+    result = subprocess.run([sys.executable, "run_pipeline.py", "--stage", "5"], cwd=REPO_ROOT, capture_output=True, text=True)
     assert result.returncode == 0
     assert "SKIPPED" in result.stdout
 
