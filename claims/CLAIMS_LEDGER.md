@@ -23,4 +23,5 @@ Status values: `PENDING` (computed, not yet re-run clean) · `VERIFIED` · `RETR
 | C-ML-12 | 1 | Does the champion beat the best baseline on validation cost? | False | Stage01_ML/reports/eval_champion.json | `python Stage01_ML/04_evaluation_engineer.py` |  | PENDING |
 | C-ML-13 | 1 | logreg macro-F1 at the frozen alert threshold (the decision the operator gets) | 0.653 [0.629, 0.677] | Stage01_ML/reports/eval_metrics.json | `python Stage01_ML/04_evaluation_engineer.py` |  | PENDING |
 | C-ML-14 | 1 | Id-column check: how much more than the clock an id's numeric order says about CRITICAL, in AUC (must stay under 0.05) | 0.000 | Stage01_ML/reports/eval_leakage_tests.json | `python Stage01_ML/04_evaluation_engineer.py` |  | PENDING |
+| C-ML-15 | 1 | Stage 1 API latency per shipment over real HTTP, 1,000 calls (p95) | 15.64 ms | Stage01_ML/reports/eval_api_latency.json | `uvicorn 05_integration_engineer:app --port 8001 + python Stage01_ML/04_evaluation_engineer.py --api-url http://127.0.0.1:8001` |  | PENDING |
 <!-- LEDGER:END -->

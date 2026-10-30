@@ -1,0 +1,14 @@
+{
+  "url": "http://127.0.0.1:8001",
+  "calls": 1000,
+  "errors": 0,
+  "p50_ms": 14.02,
+  "p95_ms": 15.64,
+  "p99_ms": 16.99,
+  "responses_without_operator_review": 0,
+  "responses_without_model_version": 0,
+  "responses_not_matching_champion": 0,
+  "status": "PASS",
+  "method": "real HTTP (urllib) against a running uvicorn server, one shipment per call",
+  "date": "2026-10-30"
+}
