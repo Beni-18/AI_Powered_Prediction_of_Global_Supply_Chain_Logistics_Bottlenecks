@@ -1,7 +1,7 @@
 {
   "calls": 1000,
-  "p50_ms": 17.27,
-  "p95_ms": 26.95,
+  "p50_ms": 16.35,
+  "p95_ms": 18.06,
   "target_p95_ms": 50,
   "meets_target": true,
   "model_version": "v1.0",
