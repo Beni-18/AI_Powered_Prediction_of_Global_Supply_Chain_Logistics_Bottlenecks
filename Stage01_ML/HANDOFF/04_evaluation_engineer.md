@@ -2,15 +2,15 @@
 
 status: READY
 updated_utc: 2026-10-30
-git_commit: see PR from branch eval/stage01-reeval
-data_version: v1 (prepared_dataset.csv.gz, train 42,000 / val 7,820 / test 7,899); predictions from Role 1's tuning (PR 14)
+git_commit: see PR from branch ml/stage01-improve
+data_version: v1.1 (prepared_dataset.csv.gz with dwell corrections; train 42,000 / val 7,820 / test 7,899)
 
 > Allowed status values: NOT_STARTED, IN_PROGRESS, READY, BLOCKED.
 > Only the role named in the title edits this file. Everyone else only reads it.
 > Set READY only AFTER the contract check below passes and your work is pushed.
 
 ## Files produced (path | contract | rows | notes)
-- `Stage01_ML/reports/eval_champion.json` | - | 1 | **Role 3 reads this**: model `xgboost_monotone`, alert threshold `0.32`, chosen on val
+- `Stage01_ML/reports/eval_champion.json` | - | 1 | **Role 3 reads this**: model `logreg`, alert threshold `0.34`, chosen on val
 - `Stage01_ML/reports/eval_metrics.json`, `eval_model_comparison.csv/png` | - | 7 models | test metrics with 95% day-block bootstrap intervals (1,000 resamples)
 - `Stage01_ML/reports/eval_threshold_decision.md`, `eval_cost_curve.png`, `eval_threshold_sensitivity.csv` | - | - | alert threshold and its sensitivity to the miss cost
 - `Stage01_ML/reports/eval_confusion.png`, `eval_calibration.png`, `eval_slices.csv/png`, `eval_anomaly.json`, `eval_leakage_tests.json`, `eval_api_latency.json`
@@ -23,16 +23,17 @@ split, labels and row sets match the frozen prepared dataset for all 7 models (n
 ```
 
 ## Decisions and assumptions (what you decided and why, in plain English)
-- **New champion: `xgboost_monotone`** (Role 1's tuned XGBoost whose risk can only rise with dwell, customs hold and weather). It beats the best baseline (`logreg`) on **validation** cost by 0.024 per shipment, 95% paired bootstrap 0.007 to 0.040, so the gain is clear. The previous champion was `logreg`, because no model beat it before the tuning.
-- **Alert threshold 0.32** (re-chosen on validation, as decision 0004 requires when the champion changes). On test: catches 82% of critical delays, 38 false alarms per 100 alerts (budget 40), cost 0.408 per shipment vs 0.486 for `logreg`.
-- **Leakage tests: PASS.** The single-feature ceiling now reads Role 1's `feature_matrix_test.csv.gz`, so all 68 model inputs (including `cal_`, `eng_`, `roll_` and one-hot columns) are checked; the strongest is dwell time at AUC 0.905 (< 0.95).
-- **Reproducibility:** a fresh clone reproduces every prediction, score and claim **exactly** with Role 1's library versions (Python 3.13, numpy 2.3.4, pandas 2.3.3, scikit-learn 1.8.0, xgboost 3.1.3, lightgbm 4.7.0; listed in `model_card.json`). With newer versions (xgboost 3.4, scikit-learn 1.9) the tree models shift slightly: same champion, still clearly better than the baseline, but threshold 0.30, 83% caught, 40.6 false alarms per 100 alerts.
+- **What changed (decision 0009):** corrected the two dwell reporting faults, removed `cal_month`, added node-relative and past-hour node-history inputs, and moved XGBoost's early stopping off validation. Each change came from a controlled experiment that changed one thing at a time and judged it on validation cost only.
+- **Champion: `logreg`** (lowest validation cost, 0.310). The tree models are clearly worse on validation with the new inputs (xgboost_monotone +0.039 per shipment, 95% range +0.023 to +0.057), so the rule keeps the simpler model.
+- **Alert threshold 0.34** (re-chosen on validation, as decision 0004 requires). On test: cost **0.369** per shipment (previous champion 0.408), **82.8%** of critical delays caught (was 81.8%), **39.6** false alarms per 100 alerts (budget 40), PR-AUC **0.829** (was 0.814).
+- **Leakage tests: PASS** on all 77 model inputs (Role 1's test feature matrix); the strongest single input is the node's previous-hour inventory at AUC 0.917 (< 0.95). It comes from a completed past hour, which the feature policy's `lag_` rule allows.
+- **Reproducibility:** a fresh clone reproduces the data, every prediction, the champion and every claim exactly with Role 1's library versions (Python 3.13, numpy 2.3.4, pandas 2.3.3, scikit-learn 1.8.0, xgboost 3.1.3, lightgbm 4.7.0).
 
 ## Things the next role must know (warnings, known issues, changed meanings)
-- **Role 3:** the API switches to the new champion by itself (it reads `eval_champion.json`); checked over real HTTP: p95 17.7 ms, 0 errors, every answer has `requires_operator_review`. Please regenerate the field guide (`python Stage01_ML/05_integration_engineer.py`): it still says 37% / 79%. Please also pin the ML library versions in `requirements.txt` (see above) so every laptop reproduces the same numbers.
-- **Role 1:** weakest slices are still the chokepoints; `eval_slices.csv` has the details.
-- **Role 2:** compare `eval_slices.csv` with your `eda_error_slices.csv` when it lands.
+- **Role 3:** the API serves `logreg` at 0.34 automatically; checked over real HTTP: p95 14 ms, 0 errors, every answer has `requires_operator_review`. The field guide is regenerated; the PDF needs re-exporting. Please pin the ML library versions in `requirements.txt`.
+- **Role 1:** the tree models may now over-fit (learning rate 0.08, all 250 trees used); a re-tune with a smaller learning rate could beat logreg again. Any new model is re-evaluated in about 10 seconds.
+- **Role 2:** chokepoints are still the weak spot; compare `eval_slices.csv` with your `eda_error_slices.csv`.
 
 ## Open questions for other roles (name the role and the question)
-- **Team:** note the new champion and threshold in `docs/decisions/0004` (the rule is unchanged; the numbers moved).
-- **Role 3:** pin library versions (decision for the team; it affects everyone's install).
+- **Team:** vote on decision 0009 (the hourly node table becomes a model input; the cleaning rules).
+- **Role 3:** pin library versions (affects everyone's install).
