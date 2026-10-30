@@ -44,6 +44,15 @@ FEATURE_LABEL = {
     "eng_labor_x_equipment_gap": "Labour shortage x missing equipment",
     "roll_node_dwell_mean_24h": "Recent dwell at this node",
 }
+# Model names as a reader would say them.
+MODEL_LABEL = {
+    "logreg": "Logistic regression",
+    "xgboost": "XGBoost",
+    "xgboost_cal": "XGBoost (calibrated)",
+    "random_forest": "Random forest",
+    "rule_dwell": "Dwell-time rule",
+    "majority": "Always 'on time'",
+}
 ONE_HOT_PREFIX = {"current_node_id_": "At", "origin_port_": "From", "destination_port_": "To",
                   "carrier_code_": "Carrier", "priority_tier_": "Priority"}
 
@@ -76,6 +85,17 @@ def feature_label(feature: str) -> str:
             pretty = node_name(value) if word in ("At", "From", "To") else value.replace("_", " ").title()
             return f"{word}: {pretty}"
     return feature
+
+
+def model_label(name: str) -> str:
+    """'logreg' -> 'Logistic regression'."""
+    return MODEL_LABEL.get(name, name)
+
+
+def join_words(items: list) -> str:
+    """['a', 'b', 'c'] -> 'a, b and c'."""
+    items = [str(i) for i in items]
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
 
 
 def status_chip(status: str) -> str:

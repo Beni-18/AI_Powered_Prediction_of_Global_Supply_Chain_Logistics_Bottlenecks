@@ -34,38 +34,67 @@ decision_status = decision_line.split("Status:", 1)[-1].strip() or "not recorded
 row = next(m for m in metrics["models"] if m["model_name"] == champion["model_name"])
 
 st.title("Model evidence")
-st.caption(f"Stage 1 · held-out test period · 95% intervals from a day-block bootstrap ({metrics['bootstrap_resamples']:,} resamples) · "
-           f"evaluated {metrics['date']}")
+st.caption(f"Stage 1 results on the held-out test period, which no model saw during training. The ranges are 95% intervals "
+           f"from a day-by-day bootstrap ({metrics['bootstrap_resamples']:,} resamples). Evaluated on {metrics['date']}.")
+champ_name = ui.model_label(champion["model_name"])
+info = metrics["champion"]
 tiles = st.columns(5)
-tiles[0].metric("Champion", champion["model_name"], help=metrics["champion"]["reason"])
-tiles[1].metric("Macro-F1", f"{row['macro_f1']:.3f}", help=f"95% interval {row['macro_f1_lo']:.3f} – {row['macro_f1_hi']:.3f}")
+tiles[0].metric("Model in use", champ_name)
+tiles[1].metric("Overall score (macro-F1)", f"{row['macro_f1']:.3f}", help=f"95% range {row['macro_f1_lo']:.3f} – {row['macro_f1_hi']:.3f}")
 tiles[2].metric("Critical delays caught", f"{row['at_threshold_critical_recall']:.0%}")
-tiles[3].metric("False alarms / 100 alerts", f"{row['at_threshold_false_alarms_per_100_alerts']:.0f}", help="Team budget: 40")
-tiles[4].metric("Alert rule (decision 0004)", f"P ≥ {champion['threshold']:.2f}", help=decision_status)
-st.info(f"**Why {champion['model_name']}?** {metrics['champion']['reason'].capitalize()}. "
-        f"Best candidate {metrics['champion'].get('best_candidate', '-')} saved "
-        f"{metrics['champion'].get('val_cost_saving_vs_baseline', 0):+.3f} cost units per shipment on validation "
-        f"(95% interval {metrics['champion'].get('val_cost_saving_ci', [0, 0])[0]:+.3f} to {metrics['champion'].get('val_cost_saving_ci', [0, 0])[1]:+.3f}). "
-        "We pick on validation only, never on test.")
+tiles[3].metric("False alarms per 100 alerts", f"{row['at_threshold_false_alarms_per_100_alerts']:.0f}", help="Team budget: 40")
+tiles[4].metric("Alert line (decision 0004)", f"{champion['threshold']:.0%}", help=f"Chance of a critical delay that triggers an alert · {decision_status}")
 
-# Step 2: every model side by side, baselines included.
-st.subheader("All models on the test period")
+# Why this model: written out as sentences from the numbers in eval_metrics.json.
+lo, hi = info.get("val_cost_saving_ci", [0, 0])
+saving = info.get("val_cost_saving_vs_baseline", 0)
+best = ui.model_label(info.get("best_candidate", "-"))
+if info.get("beats_baseline"):
+    why = (f"**{champ_name}** is in use because it beat the best simple baseline on the validation period by "
+           f"{saving:.3f} cost units per shipment (95% range {lo:+.3f} to {hi:+.3f}).")
+else:
+    why = (f"**{champ_name}** is in use because none of the trained models was clearly better on the validation period. "
+           f"The strongest one, {best}, changed the cost per shipment by only {saving:+.3f} (95% range {lo:+.3f} to {hi:+.3f}), "
+           "a range that includes zero, so the difference could be chance. Our rule is to keep the simpler model unless the gain is clear, "
+           "and we never choose a model by looking at the test period.")
+st.info(why)
+
+# Step 2: every model side by side, baselines included, then the verdict in words.
+st.subheader("How every model performed on the test period")
 models = pd.DataFrame(metrics["models"])
 table = pd.DataFrame({
-    "Model": models["model_name"],
-    "Kind": models["is_baseline"].map({True: "Baseline", False: "Candidate"}),
-    "Macro-F1": models["macro_f1"],
-    "95% interval": models.apply(lambda r: f"{r.macro_f1_lo:.3f} – {r.macro_f1_hi:.3f}", axis=1),
-    "PR-AUC (critical)": models["pr_auc_critical"],
-    "Cost / shipment": models["expected_cost_at_threshold"],
-    "Alert threshold": models["threshold"],
-    "Critical caught": 100 * models["at_threshold_critical_recall"],
+    "Model": models["model_name"].map(ui.model_label),
+    "Type": models["is_baseline"].map({True: "Simple baseline", False: "Trained model"}),
+    "Overall score (macro-F1)": models["macro_f1"],
+    "95% range": models.apply(lambda r: f"{r.macro_f1_lo:.3f} – {r.macro_f1_hi:.3f}", axis=1),
+    "Ranks critical cases (PR-AUC)": models["pr_auc_critical"],
+    "Cost per shipment": models["expected_cost_at_threshold"],
+    "Alert line": 100 * models["threshold"],
+    "Critical delays caught": 100 * models["at_threshold_critical_recall"],
     # A model that never alerts has no false-alarm rate; say so instead of showing an empty number.
-    "False alarms / 100": models["at_threshold_false_alarms_per_100_alerts"].map(lambda v: "no alerts" if pd.isna(v) else f"{v:.0f}"),
-}).sort_values("Cost / shipment")
+    "False alarms per 100 alerts": models["at_threshold_false_alarms_per_100_alerts"].map(lambda v: "never alerts" if pd.isna(v) else f"{v:.0f}"),
+}).sort_values("Cost per shipment")
 st.dataframe(table.round(3), hide_index=True, use_container_width=True, column_config={
-    "Critical caught": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.0f%%")})
-st.caption("Cost / shipment uses the team cost policy: a missed critical delay = 10, an unnecessary escalation = 1. Lower is better.")
+    "Alert line": st.column_config.NumberColumn(format="%.0f%%"),
+    "Critical delays caught": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.0f%%")})
+
+cheapest = models.sort_values("expected_cost_at_threshold").iloc[0]
+majority = models[models["model_name"] == "majority"]
+lines = [
+    f"On the test period, **{ui.model_label(cheapest['model_name'])}** had the lowest cost per shipment "
+    f"({cheapest['expected_cost_at_threshold']:.3f}) and caught {cheapest['at_threshold_critical_recall']:.0%} of critical delays, "
+    f"against {row['expected_cost_at_threshold']:.3f} and {row['at_threshold_critical_recall']:.0%} for {champ_name}.",
+]
+if cheapest["model_name"] != champion["model_name"]:
+    lines.append("That gap appeared only on the test period, not on validation, which is why the model in use did not change.")
+if len(majority):
+    m = majority.iloc[0]
+    lines.append(f"Every trained model is far better than simply calling everything on time, which would cost "
+                 f"{m['expected_cost_at_threshold']:.3f} per shipment and catch no critical delays at all.")
+st.markdown(" ".join(lines))
+st.caption("Cost per shipment follows the team's cost policy: missing a critical delay costs 10 units and an unnecessary "
+           "escalation costs 1, so lower is better. The overall score averages accuracy across the three classes; "
+           "PR-AUC measures how well a model puts real critical cases at the top of its list.")
 
 # Step 3: the report charts written by the evaluation script.
 st.subheader("Evaluation charts")

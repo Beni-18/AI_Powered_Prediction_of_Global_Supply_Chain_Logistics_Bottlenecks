@@ -32,7 +32,7 @@ start, end = pd.to_datetime(scored["timestamp"]).agg(["min", "max"])
 
 st.title("Network overview")
 st.caption(f"Stage 1 · shipment delay risk · test period {start:%d %b} – {end:%d %b %Y} (never seen in training) · "
-           f"model **{champion.get('model_name', 'STUB')}** · simulated data v1 · every alert needs a planner's review")
+           f"model **{ui.model_label(champion.get('model_name', 'STUB'))}** · simulated data v1 · every alert needs a planner's review")
 
 # Step 2: headline numbers for the period.
 crit = scored["delay_status"] == "CRITICAL_DELAY"
