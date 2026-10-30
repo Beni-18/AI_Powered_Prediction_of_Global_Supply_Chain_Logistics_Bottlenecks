@@ -30,8 +30,8 @@ split, labels and row sets match the frozen prepared dataset for all 7 models (n
 - **Reproducibility:** a fresh clone regenerates the simulator data and reproduces the cleaned data, every prediction, the champion and every claim exactly with Role 1's library versions.
 
 ## Things the next role must know (warnings, known issues, changed meanings)
-- **Role 3:** the API serves `logreg` at 0.34 automatically; checked over real HTTP: p95 14 ms, 0 errors, every answer has `requires_operator_review`. The field guide is regenerated; the PDF needs re-exporting. Please pin the ML library versions in `requirements.txt`.
-- **Role 1:** the tree models may now over-fit (learning rate 0.08, all 250 trees used); a re-tune with a smaller learning rate could beat logreg again. Any new model is re-evaluated in about 10 seconds.
+- **Role 3:** the API serves `logreg` at 0.39 automatically; checked over real HTTP: p95 15 ms, 0 errors, every answer has `requires_operator_review`. The field guide is regenerated; the PDF needs re-exporting. Please pin the ML library versions in `requirements.txt`.
+- **Role 1:** on the real-driven data XGBoost is close to logreg on validation (0.006 cheaper, not clear); more tuning or more training data could make the gain clear. Any new model is re-evaluated in about 10 seconds.
 - **Role 2:** chokepoints are still the weak spot; compare `eval_slices.csv` with your `eda_error_slices.csv`.
 
 ## Open questions for other roles (name the role and the question)
