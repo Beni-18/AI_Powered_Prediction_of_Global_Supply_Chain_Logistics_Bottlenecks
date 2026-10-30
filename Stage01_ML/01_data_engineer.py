@@ -10,6 +10,7 @@ INPUT : data/raw/sim/shipment_telemetry_raw.csv.gz
 OUTPUT: Stage01_ML/data/prepared_dataset.csv.gz   (contract: telemetry, plus *_flag helper columns)
         Stage01_ML/data/split_boundaries.json      (the split dates; Stage 2 uses the same ones)
         Stage01_ML/data/data_quality_report.json   (every change made to the data, with counts)
+READS : data/raw/sim/node_hourly_raw.csv.gz (node averages, to spot dwell sensor spikes; via common/dataio/node_context.py)
 
 RUN   : python 01_data_engineer.py     (from inside Stage01_ML/)
 """
@@ -25,6 +26,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from common.contracts import load_schema, write_validated_csv  # noqa: E402
+from common.dataio.node_context import node_lag  # noqa: E402
 from common.paths import CONTRACTS_DIR, REPO_ROOT, stage_path  # noqa: E402
 from common.seed import set_global_seed  # noqa: E402
 
@@ -36,6 +38,10 @@ FEATURE_NUMERICS = ["dwell_time_hours", "throughput_teu_per_hr", "capacity_utili
                     "customs_hold_hours", "weather_severity_index", "labor_deficit_ratio",
                     "equipment_availability_pct", "historical_delay_rate"]
 ALL_NUMERICS = FEATURE_NUMERICS + ["realized_delay_hours"]
+
+# Reporting problems Role 2's EDA found (eda_drift_report.json: carrier ZIM's dwell "SHIFTED" mid-year).
+OFFSET_CARRIER, OFFSET_FROM = "ZIM", pd.Timestamp("2025-07-01", tz="UTC")
+SPIKE_RATIO = 2.3   # a dwell reading above 2.3x the node's previous-hour average is a sensor spike (normal 99th pct is 1.4x)
 
 
 def derive_delay_status(realized_delay_hours: pd.Series) -> pd.Series:
@@ -87,6 +93,38 @@ def assign_split(timestamps: pd.Series) -> tuple[pd.Series, pd.Series, dict]:
         "rule": "rows in [boundary, boundary+gap) are removed by the purge; count in data_quality_report.json",
     }
     return split, in_gap, boundaries
+
+
+def correct_reporting_issues(df: pd.DataFrame, report: dict) -> pd.DataFrame:
+    """Undo two reporting faults in dwell_time_hours, estimating each correction FROM THE DATA, and flag every change.
+
+    1. ZIM's dwell reports carry a constant offset from 1 July. Estimate: how much ZIM's gap to the node's average
+       dwell grew after that date, minus how much other carriers' gap grew (removes the season). Subtract it.
+    2. Sensor spikes: dwell far above the node's previous-hour average. Divide by the typical spike factor
+       (median ratio among the flagged rows).
+    Values are corrected, never dropped; dwell_offset_corrected / dwell_spike_corrected mark the rows.
+    """
+    node_avg = node_lag(df, ["avg_dwell_time_hours"])["lag_avg_dwell_time_hours"]
+    gap = df["dwell_time_hours"] - node_avg
+    after = df["timestamp"] >= OFFSET_FROM
+    carrier = df["carrier_code"] == OFFSET_CARRIER
+    offset = ((gap[carrier & after].median() - gap[carrier & ~after].median())
+              - (gap[~carrier & after].median() - gap[~carrier & ~after].median()))
+    df["dwell_offset_corrected"] = carrier & after & df["dwell_time_hours"].notna()
+    df.loc[df["dwell_offset_corrected"], "dwell_time_hours"] = (df.loc[df["dwell_offset_corrected"], "dwell_time_hours"] - offset).clip(lower=0)
+
+    ratio = df["dwell_time_hours"] / node_avg
+    df["dwell_spike_corrected"] = (ratio > SPIKE_RATIO).fillna(False)
+    factor = float(ratio[df["dwell_spike_corrected"]].median()) if df["dwell_spike_corrected"].any() else 1.0
+    df.loc[df["dwell_spike_corrected"], "dwell_time_hours"] = df.loc[df["dwell_spike_corrected"], "dwell_time_hours"] / factor
+
+    report["reporting_corrections"] = {
+        "dwell_offset": {"carrier": OFFSET_CARRIER, "from": OFFSET_FROM.strftime("%Y-%m-%d"),
+                         "estimated_offset_hours": round(float(offset), 3), "rows": int(df["dwell_offset_corrected"].sum())},
+        "dwell_spikes": {"rule": f"dwell > {SPIKE_RATIO}x node previous-hour average", "estimated_factor": round(factor, 3),
+                         "rows": int(df["dwell_spike_corrected"].sum())},
+    }
+    return df
 
 
 def main() -> int:
@@ -145,6 +183,9 @@ def main() -> int:
     # Utilisation above 100% is real overload, not an error: flag it so models and planners can see it.
     df["overload_flag"] = df["capacity_utilization_pct"] > 100
     report["overload_rows"] = int(df["overload_flag"].sum())
+
+    # Step 5b: correct the dwell reporting faults Role 2's EDA found (offset and sensor spikes), with flags.
+    df = correct_reporting_issues(df, report)
 
     # Step 6: missing feature values.
     # CONFLICT NOTE: the role file says "keep missing, the model imputes", but the telemetry contract
