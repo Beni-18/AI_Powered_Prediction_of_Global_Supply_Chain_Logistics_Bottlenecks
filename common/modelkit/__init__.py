@@ -5,10 +5,12 @@ Owner: Role 1 - ML Engineer
 
 from .feature_guard import assert_features_allowed, get_feature_policy
 from .model_card import save_model_card
+from .pipeline_stage01 import Stage01Pipeline
 from .profiling import latency_probe
 from .split_loader import load_split
 
 __all__ = [
+    "Stage01Pipeline",
     "assert_features_allowed",
     "get_feature_policy",
     "save_model_card",

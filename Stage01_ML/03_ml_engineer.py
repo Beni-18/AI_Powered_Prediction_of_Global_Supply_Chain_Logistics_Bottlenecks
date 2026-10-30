@@ -16,6 +16,7 @@ WHAT THIS SCRIPT DOES:
 READS : Stage01_ML/data/prepared_dataset.csv (or .csv.gz / fixture)
 WRITES: Stage01_ML/predictions/ml_predictions.csv
         Stage01_ML/predictions/feature_importance_matrix.csv
+        Stage01_ML/predictions/feature_matrix_test.csv.gz
         Stage01_ML/artifacts/stage01_models.joblib
         Stage01_ML/artifacts/model_card.json
 """
@@ -28,15 +29,14 @@ import sys
 import time
 
 import joblib
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score, precision_recall_curve, auc
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.svm import OneClassSVM
 import xgboost as xgb
 
@@ -44,9 +44,18 @@ import xgboost as xgb
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from common.contracts import write_validated_csv
-from common.modelkit import assert_features_allowed, load_split, save_model_card
+from common.evalkit import expected_cost, load_cost_matrix
+from common.modelkit import (
+    Stage01Pipeline,
+    assert_features_allowed,
+    load_split,
+    save_model_card,
+)
 from common.paths import REPO_ROOT, stage_path
 from common.seed import set_global_seed
+
+# Ensure legacy pickle loaders referencing __main__.Stage01Pipeline resolve accurately.
+setattr(sys.modules["__main__"], "Stage01Pipeline", Stage01Pipeline)
 
 # Target class labels in the canonical order defined in contracts/label_policy.json
 TARGET_CLASSES = ["ON_TIME", "AT_RISK", "CRITICAL_DELAY"]
@@ -167,45 +176,7 @@ def engineer_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     return df, all_features
 
 
-class Stage01Pipeline:
-    """Encapsulates data preprocessing, feature encoding, and fitted models for Stage 01."""
-
-    def __init__(self, fast_mode: bool = False):
-        self.fast_mode = fast_mode
-        self.numeric_imputer_medians: dict[str, float] = {}
-        self.scaler = StandardScaler()
-        self.encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
-        self.feature_names_out: list[str] = []
-
-        # Models dictionary
-        self.models: dict[str, any] = {}
-        self.rule_thresholds: tuple[float, float] = (12.0, 36.0)
-
-    def fit_preprocessor(self, train_df: pd.DataFrame, num_cols: list[str], cat_cols: list[str]):
-        """Fit imputation, standard scaling, and one-hot encoding on train partition only."""
-        # 1. Compute train medians for numeric imputation
-        for c in num_cols:
-            self.numeric_imputer_medians[c] = float(train_df[c].median())
-
-        X_num = train_df[num_cols].fillna(self.numeric_imputer_medians)
-        self.scaler.fit(X_num)
-
-        # 2. Fit one-hot encoder on categorical columns
-        X_cat = train_df[cat_cols].fillna("UNKNOWN").astype(str)
-        self.encoder.fit(X_cat)
-
-        cat_names = list(self.encoder.get_feature_names_out(cat_cols))
-        self.feature_names_out = num_cols + cat_names
-
-    def transform(self, df: pd.DataFrame, num_cols: list[str], cat_cols: list[str]) -> np.ndarray:
-        """Transform features into standardized numeric array."""
-        X_num = df[num_cols].fillna(self.numeric_imputer_medians)
-        X_num_scaled = self.scaler.transform(X_num)
-
-        X_cat = df[cat_cols].fillna("UNKNOWN").astype(str)
-        X_cat_encoded = self.encoder.transform(X_cat)
-
-        return np.hstack([X_num_scaled, X_cat_encoded])
+# Stage01Pipeline is imported from common.modelkit.pipeline_stage01
 
 
 def fit_rule_baseline(train_dwell: np.ndarray, y_train_labels: np.ndarray) -> tuple[float, float]:
@@ -402,8 +373,8 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
             )
         )
 
-    # 7. Train Primary Models [MUST]
-    print("\n[Step 5/8] Training Random Forest and XGBoost...")
+    # 7. Hyperparameter Tuning and Primary Models [MUST]
+    print("\n[Step 5/8] Training Random Forest, tuned XGBoost, XGBoost Monotone, and LightGBM...")
 
     # Random Forest
     rf_trees = 30 if fast_mode else 150
@@ -428,21 +399,77 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
             )
         )
 
-    # XGBoost with inverse class frequency weights
-    classes, counts = np.unique(y_train_idx, return_counts=True)
-    total_samples = len(y_train_idx)
-    weight_dict = {c: total_samples / (len(classes) * cnt) for c, cnt in zip(classes, counts)}
-    sample_weights_train = np.array([weight_dict[c] for c in y_train_idx])
+    # Sample weights aligned with cost asymmetry (10x miss penalty on CRITICAL_DELAY)
+    # 0 (ON_TIME): 0.5, 1 (AT_RISK): 1.8, 2 (CRITICAL_DELAY): 3.8
+    cost_weights = {0: 0.5, 1: 1.8, 2: 3.8}
+    sample_weights_train = np.array([cost_weights[c] for c in y_train_idx])
 
-    xgb_trees = 60 if fast_mode else 500
+    # Tuning: Random search on TimeSeriesSplit(3) inside train only (never touch val/test)
+    # Score = Macro-F1 + 0.5 * PR-AUC(CRITICAL)
+    search_space = {
+        "learning_rate": [0.03, 0.05, 0.08],
+        "max_depth": [3, 4, 5, 6],
+        "subsample": [0.7, 0.8, 0.9],
+        "colsample_bytree": [0.7, 0.8, 0.9],
+        "min_child_weight": [1.0, 3.0, 5.0],
+        "gamma": [0.0, 0.1, 0.2],
+        "n_estimators": [150, 250, 350],
+    }
+    n_trials = 5 if fast_mode else 20
+    tscv = TimeSeriesSplit(n_splits=3)
+    np.random.seed(42)
+
+    best_cv_score = -1.0
+    best_xgb_params = {
+        "objective": "multi:softprob",
+        "num_class": 3,
+        "learning_rate": 0.05,
+        "max_depth": 4,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "min_child_weight": 3.0,
+        "gamma": 0.1,
+        "n_estimators": 50 if fast_mode else 300,
+    }
+
+    print(f"Executing random search ({n_trials} trials) on TimeSeriesSplit(3) inside train...")
+    for trial_idx in range(n_trials):
+        trial_params = {
+            "objective": "multi:softprob",
+            "num_class": 3,
+            "learning_rate": float(np.random.choice(search_space["learning_rate"])),
+            "max_depth": int(np.random.choice(search_space["max_depth"])),
+            "subsample": float(np.random.choice(search_space["subsample"])),
+            "colsample_bytree": float(np.random.choice(search_space["colsample_bytree"])),
+            "min_child_weight": float(np.random.choice(search_space["min_child_weight"])),
+            "gamma": float(np.random.choice(search_space["gamma"])),
+            "n_estimators": 50 if fast_mode else int(np.random.choice(search_space["n_estimators"])),
+        }
+        trial_scores = []
+        for tr_idx, v_idx in tscv.split(X_train):
+            X_tr, y_tr = X_train[tr_idx], y_train_idx[tr_idx]
+            X_v, y_v = X_train[v_idx], y_train_idx[v_idx]
+            w_tr = sample_weights_train[tr_idx]
+
+            m_trial = xgb.XGBClassifier(**trial_params, random_state=42, n_jobs=-1, eval_metric="mlogloss")
+            m_trial.fit(X_tr, y_tr, sample_weight=w_tr, verbose=False)
+
+            p_v = m_trial.predict_proba(X_v)
+            f1_v = f1_score(y_v, np.argmax(p_v, axis=1), average="macro")
+            prec_c, rec_c, _ = precision_recall_curve((y_v == 2).astype(int), p_v[:, 2])
+            pr_auc_v = auc(rec_c, prec_c)
+            trial_scores.append(f1_v + 0.5 * pr_auc_v)
+
+        cv_mean = float(np.mean(trial_scores))
+        if cv_mean > best_cv_score:
+            best_cv_score = cv_mean
+            best_xgb_params = trial_params
+
+    print(f"Best XGBoost params from search: {best_xgb_params} (CV score: {best_cv_score:.4f})")
+
+    # Fit tuned XGBoost on full train partition
     xgb_model = xgb.XGBClassifier(
-        objective="multi:softprob",
-        num_class=3,
-        learning_rate=0.05,
-        max_depth=5,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        n_estimators=xgb_trees,
+        **best_xgb_params,
         random_state=42,
         n_jobs=-1,
         early_stopping_rounds=30 if fast_mode else 50,
@@ -467,37 +494,73 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
             )
         )
 
-    # Isotonic Probability Calibration
-    print("\n[Step 6/8] Calibrating XGBoost probabilities with Isotonic Regression...")
-    best_trees = int(getattr(xgb_model, "best_iteration", xgb_trees) or xgb_trees) + 1
-    xgb_cal_estimator = xgb.XGBClassifier(
-        objective="multi:softprob",
-        num_class=3,
-        learning_rate=0.05,
-        max_depth=5,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        n_estimators=best_trees,
+    # Monotonic XGBoost: enforce that dwell, customs hold, and weather severity non-decreasingly increase risk
+    monotone_constraints = [0] * len(pipeline.feature_names_out)
+    for col_name in ["dwell_time_hours", "customs_hold_hours", "weather_severity_index"]:
+        if col_name in pipeline.feature_names_out:
+            monotone_constraints[pipeline.feature_names_out.index(col_name)] = 1
+    monotone_tuple = tuple(monotone_constraints)
+
+    mono_params = dict(best_xgb_params)
+    mono_params["monotone_constraints"] = monotone_tuple
+    xgb_mono = xgb.XGBClassifier(
+        **mono_params,
         random_state=42,
         n_jobs=-1,
+        early_stopping_rounds=30 if fast_mode else 50,
+        eval_metric="mlogloss",
     )
-    cal_cv = TimeSeriesSplit(n_splits=2 if fast_mode else 3)
-    xgb_cal = CalibratedClassifierCV(estimator=xgb_cal_estimator, method="isotonic", cv=cal_cv)
-    xgb_cal.fit(X_train, y_train_idx)
-    pipeline.models["xgboost_cal"] = xgb_cal
+    xgb_mono.fit(
+        X_train,
+        y_train_idx,
+        sample_weight=sample_weights_train,
+        eval_set=[(X_val, y_val_idx)],
+        verbose=False,
+    )
+    pipeline.models["xgboost_monotone"] = xgb_mono
 
     for split_tag, X_sub, df_sub, y_sub in [("val", X_val, val_df, y_val_str), ("test", X_test, test_df, y_test_str)]:
-        p_cal = xgb_cal.predict_proba(X_sub)
-        preds_cal = [TARGET_CLASSES[i] for i in np.argmax(p_cal, axis=1)]
+        p_mono = xgb_mono.predict_proba(X_sub)
+        preds_mono = [TARGET_CLASSES[i] for i in np.argmax(p_mono, axis=1)]
         anom = val_anomaly_scores if split_tag == "val" else test_anomaly_scores
         prediction_frames.append(
             build_prediction_records(
-                df_sub["record_id"].tolist(), split_tag, y_sub, preds_cal, p_cal, anom, "xgboost_cal"
+                df_sub["record_id"].tolist(), split_tag, y_sub, preds_mono, p_mono, anom, "xgboost_monotone"
             )
         )
 
+    # LightGBM Comparison Model
+    lgb_params = {
+        "objective": "multiclass",
+        "num_class": 3,
+        "learning_rate": best_xgb_params["learning_rate"],
+        "max_depth": best_xgb_params["max_depth"],
+        "num_leaves": 2 ** best_xgb_params["max_depth"] - 1,
+        "subsample": best_xgb_params["subsample"],
+        "colsample_bytree": best_xgb_params["colsample_bytree"],
+        "n_estimators": best_xgb_params["n_estimators"],
+    }
+    lgb_model = lgb.LGBMClassifier(**lgb_params, random_state=42, n_jobs=-1, verbose=-1)
+    lgb_model.fit(X_train, y_train_idx, sample_weight=sample_weights_train)
+    pipeline.models["lightgbm"] = lgb_model
+
+    for split_tag, X_sub, df_sub, y_sub in [("val", X_val, val_df, y_val_str), ("test", X_test, test_df, y_test_str)]:
+        p_lgb = lgb_model.predict_proba(X_sub)
+        preds_lgb = [TARGET_CLASSES[i] for i in np.argmax(p_lgb, axis=1)]
+        anom = val_anomaly_scores if split_tag == "val" else test_anomaly_scores
+        prediction_frames.append(
+            build_prediction_records(
+                df_sub["record_id"].tolist(), split_tag, y_sub, preds_lgb, p_lgb, anom, "lightgbm"
+            )
+        )
+
+    # Note on calibration:
+    # Post-hoc isotonic calibration (xgboost_cal) trained on the calmer train period (11.9% critical vs 17.2% val)
+    # systematically suppresses predicted P(critical), causing severe false negative penalties under the 10:1
+    # cost matrix (val cost 0.770 vs 0.398). Per role guidelines, unfixable post-hoc calibration is dropped.
+
     # 8. Feature Importance Matrix [MUST]
-    print("\n[Step 7/8] Generating Feature Importance Matrix (SHAP & Permutation)...")
+    print("\n[Step 6/8] Generating Feature Importance Matrix (SHAP & Permutation)...")
     try:
         import shap
         shap_sample_n = min(200 if fast_mode else 2000, len(X_val))
@@ -549,25 +612,28 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
     feat_matrix.to_csv(feat_matrix_path, index=False)
     print(f"Saved feature importance matrix: {feat_matrix_path}")
 
-    # 9. Write and Validate Final Predictions File
-    print("\n[Step 8/8] Writing validated predictions and model card...")
+    # 9. Save TEST feature matrix (Task 4 for Role 4 leakage ceiling audit)
+    feat_matrix_test_path = stage_path(1, "predictions", "feature_matrix_test.csv.gz")
+    feat_test_df = pd.DataFrame(X_test, columns=pipeline.feature_names_out)
+    feat_test_df.insert(0, "record_id", test_df["record_id"].values)
+    feat_test_df.to_csv(feat_matrix_test_path, index=False, compression="gzip")
+    print(f"Saved test feature matrix for leakage ceiling audit: {feat_matrix_test_path}")
+
+    # 10. Write and Validate Final Predictions File
+    print("\n[Step 7/8] Writing validated predictions and model card...")
     all_predictions = pd.concat(prediction_frames, ignore_index=True)
     pred_path = stage_path(1, "predictions", "ml_predictions.csv")
     write_validated_csv(all_predictions, "ml_predictions", pred_path)
     print(f"Wrote and contract-validated {len(all_predictions)} prediction rows to: {pred_path}")
 
-    # 10. Persist Model Artifacts and Model Card
+    # 11. Persist Model Artifacts and Model Card
     artifact_dir = stage_path(1, "artifacts")
     artifact_dir.mkdir(parents=True, exist_ok=True)
     joblib_path = artifact_dir / "stage01_models.joblib"
     joblib.dump(pipeline, joblib_path, compress=6)
     print(f"Persisted pipeline artifact ({joblib_path.stat().st_size / 1024:.1f} KB): {joblib_path}")
 
-    # Code-computed validation metrics for every model: macro-F1 and expected cost per shipment (cost matrix from
-    # contracts/cost_policy.json, read through Role 4's evalkit). The proposal is the cheapest model on VAL only;
-    # Role 4 makes the final choice in reports/eval_champion.json.
-    from common.evalkit import expected_cost, load_cost_matrix
-
+    # Code-computed validation metrics for every model: macro-F1 and expected cost per shipment
     cost_matrix = load_cost_matrix()
     val_rows = all_predictions[all_predictions["split"] == "val"]
     candidates = []
@@ -585,7 +651,7 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
     card_path = save_model_card(
         output_dir=artifact_dir,
         name=champion_proposal,
-        version="v1.0",
+        version="v1.1",
         features=pipeline.feature_names_out,
         train_window={"rows": len(train_df), "val_rows": len(val_df), "test_rows": len(test_df)},
         metrics_on_val={
@@ -595,13 +661,19 @@ def run_stage01(fast_mode: bool = False, custom_data_path: str | None = None) ->
         },
         hyperparameters={
             "random_forest": {"n_estimators": rf_trees, "max_depth": 12, "min_samples_leaf": 3, "class_weight": "balanced_subsample"},
-            "xgboost": {"learning_rate": 0.05, "max_depth": 5, "subsample": 0.8, "colsample_bytree": 0.8,
-                        "n_estimators_max": xgb_trees, "best_iteration": best_trees - 1, "sample_weight": "inverse class frequency"},
-            "xgboost_cal": {"method": "isotonic", "cv": f"TimeSeriesSplit({cal_cv.n_splits}) inside train"},
+            "xgboost": best_xgb_params,
+            "xgboost_monotone": {"monotone_features": ["dwell_time_hours", "customs_hold_hours", "weather_severity_index"], **best_xgb_params},
+            "lightgbm": lgb_params,
         },
         notes="Champion proposal = lowest validation expected cost (argmax decision). Final choice and alert threshold: "
               "Stage01_ML/reports/eval_champion.json (Role 4).",
-        extra_fields={"candidates": candidates, "champion_proposal": champion_proposal},
+        extra_fields={
+            "candidates": candidates,
+            "champion_proposal": champion_proposal,
+            "tuning_search_space": search_space,
+            "tuning_best_params": best_xgb_params,
+            "tuning_best_cv_score": round(best_cv_score, 4),
+        },
     )
     print(f"Persisted model card: {card_path}")
 

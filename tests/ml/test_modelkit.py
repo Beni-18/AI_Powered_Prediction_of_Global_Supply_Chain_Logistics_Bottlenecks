@@ -117,3 +117,32 @@ def test_latency_probe():
     assert "p95_ms" in stats
     assert stats["p95_ms"] >= stats["p50_ms"]
     assert stats["iterations"] == 20
+
+
+def test_stage01_pipeline():
+    """Verify that Stage01Pipeline fits preprocessors on train only and transforms cleanly."""
+    from common.modelkit import Stage01Pipeline
+
+    train_df = pd.DataFrame({
+        "num1": [10.0, 20.0, np.nan],
+        "cat1": ["A", "B", "A"],
+    })
+    test_df = pd.DataFrame({
+        "num1": [np.nan, 30.0],
+        "cat1": ["B", "UNKNOWN_NEW"],
+    })
+
+    pipe = Stage01Pipeline()
+    pipe.fit_preprocessor(train_df, ["num1"], ["cat1"])
+
+    # Median of [10.0, 20.0] is 15.0
+    assert pipe.numeric_imputer_medians["num1"] == 15.0
+
+    X_tr = pipe.transform(train_df, ["num1"], ["cat1"])
+    assert X_tr.shape == (3, 3)  # 1 numeric + 2 one-hot ("A", "B")
+
+    X_te = pipe.transform(test_df, ["num1"], ["cat1"])
+    assert X_te.shape == (2, 3)
+    # Check that unknown category maps to zeros without error
+    assert X_te[1, 1] == 0.0 and X_te[1, 2] == 0.0
+
