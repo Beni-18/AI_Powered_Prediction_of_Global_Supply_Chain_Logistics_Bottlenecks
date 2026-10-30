@@ -85,7 +85,8 @@ def test_api_serves_the_evaluation_champion(client):
 
 
 @pytest.mark.parametrize("field, value", [("capacity_utilization_pct", 999), ("labor_deficit_ratio", -1),
-                                          ("current_node_id", "PORT_NOWHERE"), ("priority_tier", "URGENT")])
+                                          ("current_node_id", "PORT_NOWHERE"), ("priority_tier", "URGENT"),
+                                          ("timestamp", "not-a-date")])
 def test_bad_input_gets_a_clear_422(client, body, field, value):
     bad = dict(body, **{field: value})
     assert client.post("/predict", json=bad).status_code == 422
@@ -95,3 +96,13 @@ def test_batch_scores_every_row_and_keeps_the_review_flag(client, api):
     rows = api.sample_requests(5)
     answer = client.post("/predict/batch", json={"shipments": rows}).json()
     assert len(answer["results"]) == 5 and all(r["requires_operator_review"] for r in answer["results"])
+
+
+def test_batch_accepts_mixed_and_missing_timestamps(client, api):
+    """A batch where one row has no time, one has no zone and one has seconds+offset must score, not crash."""
+    rows = api.sample_requests(3)
+    rows[0].pop("timestamp")
+    rows[1]["timestamp"] = "2025-12-01T10:00:00"
+    rows[2]["timestamp"] = "2025-12-01T15:30:00.250+05:30"
+    response = client.post("/predict/batch", json={"shipments": rows})
+    assert response.status_code == 200 and len(response.json()["results"]) == 3
