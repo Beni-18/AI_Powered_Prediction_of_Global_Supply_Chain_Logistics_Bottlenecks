@@ -1,8 +1,9 @@
 """Shared helpers for the CASCADE control tower (Streamlit pages).
 Owner: Role 3 (Data & Integration Engineer). Built by Role 4 at the team lead's request; Role 3 to review.
 
-What lives here: plain-English names for nodes and model features, the status colours, and cached loaders
-for the files the pages read. Every number on screen comes from a file written by a role script.
+What lives here: plain-English names for nodes and model features, the status colours, the sidebar model
+picker, and cached loaders for the files the pages read. Every number on screen comes from a file written
+by a role script.
 
 READS : contracts/network_nodes.csv, contracts/network_edges.csv, Stage01_ML/data/prepared_dataset.csv.gz,
         Stage01_ML/reports/*.json, Stage01_ML/05_integration_engineer.py (the scoring code the API uses)
@@ -59,6 +60,9 @@ MODEL_LABEL = {
 ONE_HOT_PREFIX = {"current_node_id_": "At", "origin_port_": "From", "destination_port_": "To",
                   "carrier_code_": "Carrier", "priority_tier_": "Priority"}
 
+# Session-state key for the sidebar model picker; every page reads the same value.
+_MODEL_KEY = "_cascade_selected_model"
+
 
 @st.cache_data
 def nodes() -> pd.DataFrame:
@@ -93,6 +97,58 @@ def feature_label(feature: str) -> str:
 def model_label(name: str) -> str:
     """'logreg' -> 'Logistic regression'."""
     return MODEL_LABEL.get(name, name)
+
+
+def available_models() -> list[dict]:
+    """Models the API can serve, each with its own threshold and a champion flag.
+
+    Returns a list of dicts with keys 'model_name', 'alert_threshold', 'is_champion' (same shape as GET /models).
+    Falls back to the champion alone when the model artefact is missing.
+    """
+    module = api()
+    svc = module.service()
+    if svc.stub:
+        return [{"model_name": "STUB", "alert_threshold": 0.5, "is_champion": True}]
+    return [{"model_name": m, "alert_threshold": svc.thresholds[m], "is_champion": m == svc.model_name}
+            for m in svc.available]
+
+
+def model_picker() -> str:
+    """Sidebar selectbox that lets the user switch the scoring model on every page.
+
+    Persists the choice in st.session_state so the overview, scoring, and evidence pages all score
+    with the same model without re-selecting. Returns the chosen model's internal name (e.g. 'logreg').
+    """
+    models = available_models()
+    names = [m["model_name"] for m in models]
+    champion = next((m["model_name"] for m in models if m["is_champion"]), names[0])
+    thresholds = {m["model_name"]: m["alert_threshold"] for m in models}
+
+    # Default to the champion on first visit.
+    if _MODEL_KEY not in st.session_state or st.session_state[_MODEL_KEY] not in names:
+        st.session_state[_MODEL_KEY] = champion
+
+    def _format(name: str) -> str:
+        """Show the human name plus '(champion)' for the current best."""
+        label = model_label(name)
+        return f"{label} (champion)" if name == champion else label
+
+    selected = st.sidebar.selectbox(
+        "Scoring model",
+        names,
+        index=names.index(st.session_state[_MODEL_KEY]),
+        format_func=_format,
+        key=_MODEL_KEY,
+        help="Switch the model used to score shipments on every page. The champion was chosen on the validation period.",
+    )
+    # Show the alert threshold for the selected model so the user knows the decision rule.
+    st.sidebar.caption(f"Alert threshold: {thresholds[selected]:.0%}")
+    return selected
+
+
+def selected_model() -> str:
+    """The model currently chosen in the sidebar picker, or the champion if the picker has not been shown yet."""
+    return st.session_state.get(_MODEL_KEY, None)
 
 
 def join_words(items: list) -> str:
@@ -141,9 +197,15 @@ def node_typical() -> pd.DataFrame:
     return data[data["split"] == "train"].groupby("current_node_id")[list(FEATURE_LABEL)[:8]].median()
 
 
-def validate_and_score(records: list) -> tuple:
-    """Check rows against the API's contract model, then score them. Bad rows are returned, never dropped silently."""
+def validate_and_score(records: list, model_name: str | None = None) -> tuple:
+    """Check rows against the API's contract model, then score them. Bad rows are returned, never dropped silently.
+
+    When model_name is None, the sidebar selection (session state) is used; when that is also unset the champion
+    is used. Pass a model_name explicitly to override.
+    """
     module = api()
+    # Resolve which model to score with: explicit argument > sidebar picker > champion default.
+    name = model_name if model_name is not None else selected_model()
     fields = module.NUMERIC_FIELDS + ["priority_tier", "carrier_code", "origin_port", "destination_port",
                                       "current_node_id", "timestamp", "record_id"]
     good, problems = [], []
@@ -158,7 +220,7 @@ def validate_and_score(records: list) -> tuple:
             # One readable line per broken field, e.g. "dwell_time_hours: Input should be greater than or equal to 0".
             reasons = [f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in err.errors()]
             problems.append({"row": i, "problem": "; ".join(reasons)})
-    answers = module.service().score(good) if good else []
+    answers = module.service().score(good, model_name=name) if good else []
     for answer, shipment in zip(answers, good):
         answer["node"] = shipment.current_node_id
     return answers, problems
@@ -175,24 +237,32 @@ def official_predictions(split: str) -> pd.DataFrame:
     return pred[(pred["model_name"] == champion["model_name"]) & (pred["split"] == split)].set_index("record_id")
 
 
-@st.cache_data
-def scored_period(split: str) -> pd.DataFrame:
+def scored_period(split: str, model_name: str | None = None) -> pd.DataFrame:
     """Every shipment of one period with the model's answer and the real outcome.
 
-    Risk, label and alert come from the official predictions file, so the dashboard shows exactly the numbers in the
-    evaluation report; the API scoring adds the per-shipment reasons and the unusual-shipment flag.
+    When model_name is None the sidebar selection is used (champion is the fallback).
+
+    For the *champion* model, risk, label and alert come from the official predictions file so the dashboard
+    shows exactly the numbers in the evaluation report. For any other model, all numbers come from live scoring.
     """
+    name = model_name if model_name is not None else selected_model()
     rows = shipments()
     rows = rows[rows["split"] == split]
-    answers, _ = validate_and_score(rows.to_dict(orient="records"))
+    answers, _ = validate_and_score(rows.to_dict(orient="records"), model_name=name)
     table = pd.DataFrame(answers)
     table["p_critical"] = table["probabilities"].map(lambda p: p["CRITICAL_DELAY"])
-    official = official_predictions(split)
-    if len(official):
-        threshold = float(read_json(stage_path(1, "reports", "eval_champion.json"))["threshold"])
-        table["p_critical"] = table["record_id"].map(official["p_critical"]).fillna(table["p_critical"])
-        table["label"] = table["record_id"].map(official["y_pred"]).fillna(table["label"])
-        table["alert"] = table["p_critical"] >= threshold
+
+    # For the champion, overlay the official evaluated predictions so the numbers match the evaluation report.
+    svc = api().service()
+    is_champion = name is None or name == svc.model_name
+    if is_champion:
+        official = official_predictions(split)
+        if len(official):
+            threshold = float(read_json(stage_path(1, "reports", "eval_champion.json"))["threshold"])
+            table["p_critical"] = table["record_id"].map(official["p_critical"]).fillna(table["p_critical"])
+            table["label"] = table["record_id"].map(official["y_pred"]).fillna(table["label"])
+            table["alert"] = table["p_critical"] >= threshold
+
     table["reasons"] = table["top_drivers"].map(lambda d: " · ".join(feature_label(x) for x in d))
     real = rows.set_index("record_id")[["timestamp", "delay_status", "realized_delay_hours", "carrier_code",
                                         "priority_tier", "origin_port", "destination_port"]]

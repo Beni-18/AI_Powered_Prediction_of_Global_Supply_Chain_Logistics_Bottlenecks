@@ -20,12 +20,17 @@ from common.integration import ui  # noqa: E402
 from common.paths import stage_path  # noqa: E402
 
 champion = ui.read_json(stage_path(1, "reports", "eval_champion.json"))
-threshold = float(champion.get("threshold", 0.5))
+
+# The model currently selected in the sidebar picker (may differ from the champion).
+model_name = ui.selected_model()
+models_lookup = {m["model_name"]: m for m in ui.available_models()}
+active = models_lookup.get(model_name, {"alert_threshold": float(champion.get("threshold", 0.5)), "is_champion": True})
+threshold = float(active["alert_threshold"])
 NUMERIC = list(ui.FEATURE_LABEL)[:8]
 
 st.title("Bottleneck scoring")
-model_name = ui.model_label(champion.get("model_name", "STUB"))
-st.caption(f"Shipments are scored by **{model_name}**. An alert is raised when the chance of a critical delay "
+active_label = ui.model_label(model_name or champion.get("model_name", "STUB"))
+st.caption(f"Shipments are scored by **{active_label}**. An alert is raised when the chance of a critical delay "
            f"(24 hours or more) is **{threshold:.0%} or higher**; this threshold was chosen on the validation period and "
            "agreed by the team (decision 0004). Every alert is advice for a planner, never an automatic action.")
 if not champion:
@@ -122,7 +127,7 @@ with lookup_tab:
                   "test": "Test period (not used for training)"}
         meta[4].markdown(f"**Data period**<br>{period.get(row['split'], row['split'])}", unsafe_allow_html=True)
         st.divider()
-        answers, problems = ui.validate_and_score([row.to_dict()])
+        answers, problems = ui.validate_and_score([row.to_dict()], model_name=model_name)
         if problems:
             st.warning(problems[0]["problem"])
         else:
@@ -132,7 +137,7 @@ with lookup_tab:
 
 # Step 2: every test-period shipment, filterable, with the real outcome next to the model's call.
 with browse_tab:
-    scored = ui.scored_period("test")
+    scored = ui.scored_period("test", model_name=model_name)
     scored = scored.assign(location=scored["node"].map(ui.node_name))
     f = st.columns([2, 2, 1.3, 1.2])
     location = f[0].selectbox("Location", ["All locations"] + sorted(scored["location"].unique()))
@@ -204,7 +209,7 @@ with new_tab:
         }
         submitted = st.form_submit_button("Score this shipment", type="primary")
     if submitted:
-        answers, problems = ui.validate_and_score([values])
+        answers, problems = ui.validate_and_score([values], model_name=model_name)
         if problems:
             st.warning(problems[0]["problem"])
         else:
@@ -218,7 +223,7 @@ with new_tab:
         if len(upload) > limit:
             # Same limit as the batch API; say so instead of cutting rows off silently (Role 3).
             st.warning(f"The file has {len(upload):,} rows; only the first {limit:,} are scored.")
-        answers, problems = ui.validate_and_score(upload.head(limit).to_dict(orient="records"))
+        answers, problems = ui.validate_and_score(upload.head(limit).to_dict(orient="records"), model_name=model_name)
         if problems:
             st.warning(f"{len(problems)} row(s) break the data contract and were not scored.")
             st.dataframe(pd.DataFrame(problems), hide_index=True)

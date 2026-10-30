@@ -38,12 +38,28 @@ st.caption(f"Stage 1 results on the held-out test period, which no model saw dur
            f"from a day-by-day bootstrap ({metrics['bootstrap_resamples']:,} resamples). Evaluated on {metrics['date']}.")
 champ_name = ui.model_label(champion["model_name"])
 info = metrics["champion"]
+
+# The sidebar model picker controls which model's evidence tiles are shown.
+selected = ui.selected_model()
+active_name = selected if (selected and any(m["model_name"] == selected for m in metrics["models"])) else champion["model_name"]
+active_row = next(m for m in metrics["models"] if m["model_name"] == active_name)
+active_label = ui.model_label(active_name)
+is_champion = active_name == champion["model_name"]
+
+if not is_champion:
+    st.info(f"The sidebar has **{active_label}** selected for scoring. The tiles below show its evaluation metrics on the test period. "
+            f"The team's signed-off champion is **{champ_name}**.")
+
 tiles = st.columns(5)
-tiles[0].metric("Model in use", champ_name)
-tiles[1].metric("Overall score (macro-F1)", f"{row['macro_f1']:.3f}", help=f"95% range {row['macro_f1_lo']:.3f} – {row['macro_f1_hi']:.3f}")
-tiles[2].metric("Critical delays caught", f"{row['at_threshold_critical_recall']:.0%}")
-tiles[3].metric("False alarms per 100 alerts", f"{row['at_threshold_false_alarms_per_100_alerts']:.0f}", help="Team budget: 40")
-tiles[4].metric("Alert line (decision 0004)", f"{champion['threshold']:.0%}", help=f"Chance of a critical delay that triggers an alert · {decision_status}")
+model_title = f"{active_label} (champion)" if is_champion else active_label
+tiles[0].metric("Selected model", model_title)
+tiles[1].metric("Overall score (macro-F1)", f"{active_row['macro_f1']:.3f}", help=f"95% range {active_row['macro_f1_lo']:.3f} – {active_row['macro_f1_hi']:.3f}")
+tiles[2].metric("Critical delays caught", f"{active_row['at_threshold_critical_recall']:.0%}")
+fa_val = active_row["at_threshold_false_alarms_per_100_alerts"]
+fa_str = "never alerts" if pd.isna(fa_val) else f"{fa_val:.0f}"
+tiles[3].metric("False alarms per 100 alerts", fa_str, help="Team budget: 40")
+thresh_help = "Chance of a critical delay that triggers an alert" + (f" · {decision_status}" if is_champion else "")
+tiles[4].metric("Alert line", f"{active_row['threshold']:.0%}", help=thresh_help)
 
 # Why this model: written out as sentences from the numbers in eval_metrics.json.
 lo, hi = info.get("val_cost_saving_ci", [0, 0])

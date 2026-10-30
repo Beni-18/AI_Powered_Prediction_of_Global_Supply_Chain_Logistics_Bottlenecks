@@ -12,7 +12,15 @@ Design rules (from the team's design memory): a real product, data-dense, no mar
 no decorative gradients. Every number on screen must come from a file written by a role script.
 """
 
+import sys
+from pathlib import Path
+
 import streamlit as st
+
+# Let every page and the model picker import common modules.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from common.integration import ui  # noqa: E402
 
 st.set_page_config(page_title="CASCADE control tower", layout="wide")
 
@@ -26,4 +34,10 @@ pages = {
 }
 st.sidebar.markdown("**CASCADE** control tower")
 st.sidebar.caption("Decision support only · every alert needs a planner's review")
+
+# Model picker: lets the user switch models on every page. The choice persists across page switches via
+# session state. Pages read it through ui.selected_model() or pass it to validate_and_score/scored_period.
+ui.model_picker()
+st.sidebar.divider()
+
 st.navigation(pages).run()
