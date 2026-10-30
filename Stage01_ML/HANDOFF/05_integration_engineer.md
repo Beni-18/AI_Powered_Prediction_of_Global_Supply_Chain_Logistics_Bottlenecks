@@ -46,6 +46,11 @@ requires_operator_review, 0 not matching eval_champion.json.
 - Field guide: print styles added so the printable copy fits one page; `integ_ops_field_guide.pdf` added.
 - Two regression tests added to `tests/integ/test_api_stage01.py`; latency re-measured after the changes.
 
+## Update 2026-10-30 (written by Role 4 at the team lead's request; Pravin to review)
+- The API now passes the pipeline's train `node_medians` to `engineer_features` and gets the node-history inputs from `common/dataio/node_context.py`, so it scores exactly like training (max difference 0.00005 on val and test; a shipment dated after the data ends still scores).
+- Node history uses a per-node binary search: in-process p95 14 ms (it was 54 ms with a table join per request).
+- Field guide regenerated (34% / 83% / 40 per 100). **The PDF is now stale**: please re-export it from `integ_ops_field_guide.html`.
+
 ## Open questions for other roles (name the role and the question)
 - **All roles:** please vote on `docs/decisions/0008-missing-feature-values.md` (keep the median fill for Stage 1; allow `was_missing_*` and `overload_flag` as features from Stage 2). It needs a second approver.
 - **Role 2:** the field guide reuses `eda_field_guide_text.md`; it mentions "capacity utilization above 90%" - please confirm that figure from your reports.
