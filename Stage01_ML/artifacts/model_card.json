@@ -1,14 +1,14 @@
 {
-  "model_name": "xgboost_monotone",
+  "model_name": "logreg",
   "model_version": "v1.1",
-  "created_utc": "2026-10-30T04:51:10.314089+00:00",
+  "created_utc": "2026-10-30T06:06:27.920928+00:00",
   "seed": 42,
   "train_window": {
     "rows": 42000,
     "val_rows": 7820,
     "test_rows": 7899
   },
-  "feature_count": 68,
+  "feature_count": 77,
   "features": [
     "dwell_time_hours",
     "throughput_teu_per_hr",
@@ -20,12 +20,21 @@
     "historical_delay_rate",
     "cal_hour",
     "cal_dow",
-    "cal_month",
     "eng_util_x_customs",
     "eng_log_dwell",
     "eng_throughput_per_util",
     "eng_labor_x_equipment_gap",
     "roll_node_dwell_mean_24h",
+    "eng_dwell_vs_node",
+    "eng_util_vs_node",
+    "lag_capacity_utilization_pct",
+    "lag_avg_dwell_time_hours",
+    "lag_vessels_waiting",
+    "lag_inventory_level_teu",
+    "lag_dest_capacity_utilization_pct",
+    "lag_dest_vessels_waiting",
+    "lag_util_change_24h",
+    "lag_queue_change_24h",
     "priority_tier_CRITICAL_MEDICAL",
     "priority_tier_EXPEDITED",
     "priority_tier_PERISHABLE_COLD_CHAIN",
@@ -80,9 +89,9 @@
     "current_node_id_RAIL_US_CHI_BNSF"
   ],
   "metrics_on_val": {
-    "macro_f1": 0.7093,
+    "macro_f1": 0.7096,
     "fast_mode": false,
-    "training_duration_seconds": 82.93
+    "training_duration_seconds": 88.92
   },
   "hyperparameters": {
     "random_forest": {
@@ -94,13 +103,15 @@
     "xgboost": {
       "objective": "multi:softprob",
       "num_class": 3,
-      "learning_rate": 0.03,
+      "learning_rate": 0.08,
       "max_depth": 6,
-      "subsample": 0.8,
+      "subsample": 0.9,
       "colsample_bytree": 0.7,
       "min_child_weight": 5.0,
       "gamma": 0.2,
-      "n_estimators": 250
+      "n_estimators": 250,
+      "trees_used": 250,
+      "early_stopping": "last 15% of train"
     },
     "xgboost_monotone": {
       "monotone_features": [
@@ -110,74 +121,76 @@
       ],
       "objective": "multi:softprob",
       "num_class": 3,
-      "learning_rate": 0.03,
+      "learning_rate": 0.08,
       "max_depth": 6,
-      "subsample": 0.8,
+      "subsample": 0.9,
       "colsample_bytree": 0.7,
       "min_child_weight": 5.0,
       "gamma": 0.2,
-      "n_estimators": 250
+      "n_estimators": 250,
+      "trees_used": 250,
+      "early_stopping": "last 15% of train"
     },
     "lightgbm": {
       "objective": "multiclass",
       "num_class": 3,
-      "learning_rate": 0.03,
+      "learning_rate": 0.08,
       "max_depth": 6,
       "num_leaves": 63,
-      "subsample": 0.8,
+      "subsample": 0.9,
       "colsample_bytree": 0.7,
       "n_estimators": 250
     }
   },
   "library_versions": {
-    "python": "3.13.5",
-    "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+    "python": "3.13.14",
+    "platform": "macOS-15.7.5-arm64-arm-64bit-Mach-O",
     "numpy": "2.3.4",
     "pandas": "2.3.3",
     "scipy": "1.17.0",
     "sklearn": "1.8.0",
     "xgboost": "3.1.3",
     "lightgbm": "4.7.0",
-    "torch": "2.15.0",
+    "torch": "not_installed",
     "shap": "0.54.1"
   },
   "notes": "Champion proposal = lowest validation expected cost (argmax decision). Final choice and alert threshold: Stage01_ML/reports/eval_champion.json (Role 4).",
   "candidates": [
     {
-      "model_name": "xgboost_monotone",
-      "is_baseline": false,
-      "val_macro_f1": 0.7093,
-      "val_expected_cost": 0.3862
-    },
-    {
       "model_name": "logreg",
       "is_baseline": true,
-      "val_macro_f1": 0.6965,
-      "val_expected_cost": 0.4002
+      "val_macro_f1": 0.7096,
+      "val_expected_cost": 0.3252
+    },
+    {
+      "model_name": "xgboost_monotone",
+      "is_baseline": false,
+      "val_macro_f1": 0.7165,
+      "val_expected_cost": 0.3734
     },
     {
       "model_name": "xgboost",
       "is_baseline": false,
-      "val_macro_f1": 0.7041,
-      "val_expected_cost": 0.405
+      "val_macro_f1": 0.7189,
+      "val_expected_cost": 0.3748
     },
     {
       "model_name": "lightgbm",
       "is_baseline": false,
-      "val_macro_f1": 0.7019,
-      "val_expected_cost": 0.4067
+      "val_macro_f1": 0.7216,
+      "val_expected_cost": 0.3813
     },
     {
       "model_name": "random_forest",
       "is_baseline": false,
-      "val_macro_f1": 0.7027,
-      "val_expected_cost": 0.498
+      "val_macro_f1": 0.7158,
+      "val_expected_cost": 0.4107
     },
     {
       "model_name": "rule_dwell",
       "is_baseline": true,
-      "val_macro_f1": 0.5563,
-      "val_expected_cost": 0.5351
+      "val_macro_f1": 0.5602,
+      "val_expected_cost": 0.5513
     },
     {
       "model_name": "majority",
@@ -186,7 +199,7 @@
       "val_expected_cost": 2.3581
     }
   ],
-  "champion_proposal": "xgboost_monotone",
+  "champion_proposal": "logreg",
   "tuning_search_space": {
     "learning_rate": [
       0.03,
@@ -228,13 +241,13 @@
   "tuning_best_params": {
     "objective": "multi:softprob",
     "num_class": 3,
-    "learning_rate": 0.03,
+    "learning_rate": 0.08,
     "max_depth": 6,
-    "subsample": 0.8,
+    "subsample": 0.9,
     "colsample_bytree": 0.7,
     "min_child_weight": 5.0,
     "gamma": 0.2,
     "n_estimators": 250
   },
-  "tuning_best_cv_score": 0.9439
+  "tuning_best_cv_score": 0.9854
 }
