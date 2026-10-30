@@ -1,8 +1,8 @@
 {
-  "train_end": "2025-09-14T02:42:30Z",
-  "val_start": "2025-09-21T02:42:30Z",
-  "val_end": "2025-11-07T02:49:51Z",
-  "test_start": "2025-11-14T02:49:51Z",
+  "train_end": "2025-09-13T23:14:18Z",
+  "val_start": "2025-09-20T23:14:18Z",
+  "val_end": "2025-11-07T02:18:03Z",
+  "test_start": "2025-11-14T02:18:03Z",
   "purge_gap_hours": 168,
   "rule": "rows in [boundary, boundary+gap) are removed by the purge; count in data_quality_report.json"
 }

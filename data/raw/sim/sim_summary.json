@@ -1,12 +1,13 @@
 {
   "seed": 42,
   "n_shipments_raw": 60100,
-  "n_events": 125,
-  "n_hourly_rows": 234142,
+  "n_events": 67,
+  "n_hourly_rows": 234141,
   "hidden_scale": 1.0,
+  "drivers": "real: weather_hourly, activity_profile, gscpi_monthly",
   "class_mix_before_planting": {
-    "ON_TIME": 0.6336166666666667,
-    "AT_RISK": 0.22903333333333334,
-    "CRITICAL_DELAY": 0.13735
+    "ON_TIME": 0.6512333333333333,
+    "AT_RISK": 0.21781666666666666,
+    "CRITICAL_DELAY": 0.13095
   }
 }
