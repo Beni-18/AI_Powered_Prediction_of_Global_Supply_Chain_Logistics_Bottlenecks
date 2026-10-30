@@ -50,7 +50,8 @@ from common.seed import SEED, set_global_seed  # noqa: E402
 STAGE = 1
 PROBA_COLS = ["p_on_time", "p_at_risk", "p_critical"]
 # Models whose name starts with one of these are the "beat me first" baselines, not candidates for champion.
-BASELINE_PREFIXES = ("rule", "logistic", "majority", "baseline")
+# Role 1's file names them majority, rule_dwell and logreg; the other spellings are kept for older files.
+BASELINE_PREFIXES = ("majority", "rule", "logreg", "logistic", "baseline")
 FALLBACK_BLOCK_ROWS = 100  # used only when no timestamps are available to form day-blocks
 MIN_SLICE_ROWS = 50        # a slice with fewer test rows is too small to rank as "worst"
 
