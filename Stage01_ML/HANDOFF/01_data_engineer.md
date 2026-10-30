@@ -3,7 +3,7 @@
 status: READY
 updated_utc: 2026-10-30
 git_commit: see PR "data(stage01): prepared dataset, split and data helpers"
-data_version: v1 (built from simulator v0.2, seed 42)
+data_version: v2 (SIM v0.3, real drivers)
 
 > Allowed status values: NOT_STARTED, IN_PROGRESS, READY, BLOCKED.
 > Only the role named in the title edits this file. Everyone else only reads it.
@@ -42,6 +42,11 @@ PASS  Stage01_ML/data/prepared_dataset.csv.gz  (57719 rows, schema 'telemetry')
   - Sensor spikes (dwell above 2.3x the node's previous-hour average; normal 99th percentile is 1.4x): factor **3.00**, 293 rows, flag `dwell_spike_corrected`.
   - Both are logged under `reporting_corrections` in `data_quality_report.json`. Labels and splits are unchanged.
 - New shared helper `common/dataio/node_context.py`: the node's state from the last COMPLETE hour before a shipment (hourly table), used by the cleaning, the model features and the API. Tests in `tests/data/test_node_context.py`.
+
+## Update 2026-10-30 (2): real drivers (written by Role 4 at the team lead's request; Pravin to review)
+- The simulator now uses real data through `common/dataio/calibration.py` (decision 0010, SIM_CARD v0.3): Open-Meteo hourly weather (2025-01-01 to 2026-03-01; `scripts/fetch_real_data.py --weather-only` rebuilds it), PortWatch busy months and port size, and the real GSCPI. Synthetic storms are dropped.
+- Rebuilt data: class mix 65.1 / 21.8 / 13.1; split: train 42,000 / val 7,824 / test 7,894 (critical 14.0% / 9.6% / 12.8%). Dwell corrections re-estimated: ZIM offset +5.01 h (1,417 rows), spikes x2.98 (291 rows).
+- `--synthetic-drivers` rebuilds the old v0.2 data.
 
 ## Things the next role must know (warnings, known issues, changed meanings)
 - **Role 1:** use only the features in `contracts/feature_policy.json`. You *may* also use the `was_missing_*` and `overload_flag` columns, because they are knowable at snapshot time. Never use `dup_flag` or `split` as features.
