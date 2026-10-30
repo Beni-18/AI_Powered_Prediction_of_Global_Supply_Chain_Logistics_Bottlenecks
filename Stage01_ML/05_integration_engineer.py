@@ -45,6 +45,7 @@ STAGE = 1
 CLASSES = ["ON_TIME", "AT_RISK", "CRITICAL_DELAY"]
 MAX_BATCH = 1000            # from the Role 3 file: batch endpoint takes up to 1,000 rows
 ROLLING_WINDOW = 24         # roll_node_dwell_mean_24h = mean of the previous 24 records at the node (Role 1's feature)
+TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"   # every timestamp is turned into this exact form before Role 1's code parses it
 LATENCY_CALLS = 1000        # from the Role 3 file: measure latency with 1,000 calls
 NUMERIC_FIELDS = ["dwell_time_hours", "throughput_teu_per_hr", "capacity_utilization_pct", "customs_hold_hours",
                   "weather_severity_index", "labor_deficit_ratio", "equipment_availability_pct", "historical_delay_rate"]
@@ -78,6 +79,20 @@ class _NodeCheck(BaseModel):
         if value not in _node_ids():
             raise ValueError(f"unknown node id '{value}' (see contracts/network_nodes.csv)")
         return value
+
+    @field_validator("timestamp", check_fields=False)
+    @classmethod
+    def _iso_utc(cls, value: Optional[str]) -> Optional[str]:
+        # One fixed format for every row, so a batch that mixes styles (or omits some times) still parses.
+        if value is None:
+            return None
+        try:
+            ts = pd.Timestamp(value)
+        except (ValueError, TypeError):
+            raise ValueError(f"timestamp '{value}' is not an ISO date-time, e.g. 2025-12-01T10:00:00Z") from None
+        # A time without a zone is read as UTC, the zone every contract file uses.
+        ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+        return ts.strftime(TS_FORMAT)
 
 
 @lru_cache(maxsize=1)
@@ -152,7 +167,7 @@ class Service:
         if self.stub:
             return [_stub_answer(r) for r in rows]
         frame = pd.DataFrame([r.model_dump() for r in rows])
-        frame["timestamp"] = frame["timestamp"].fillna(pd.Timestamp.now(tz="UTC").isoformat())
+        frame["timestamp"] = frame["timestamp"].fillna(pd.Timestamp.now(tz="UTC").strftime(TS_FORMAT))
         features, _ = self.role1.engineer_features(frame)
         # A single request has no history of its own, so the rolling dwell comes from the node's recent records.
         features["roll_node_dwell_mean_24h"] = [
@@ -342,7 +357,11 @@ h1 { font-size: 1.5rem; margin: 0 0 .75rem; } h2 { font-size: 1.1rem; margin: 1.
 table { border-collapse: collapse; width: 100%; margin: .4rem 0; } th, td { border: 1px solid #d0d7de; padding: .3rem .5rem; text-align: left; }
 th { background: #f6f8fa; } code { font: .9em ui-monospace, Menlo, monospace; background: #f6f8fa; padding: 0 .2rem; }
 hr { border: 0; border-top: 1px solid #d0d7de; margin: 1.25rem 0; } .src { font-size: 9pt; color: #57606a; }
-@media print { body { margin: 0; max-width: none; } h2 { break-after: avoid; } table { break-inside: avoid; } }
+/* Printed copy must fit ONE A4 page (Role 3 file), so print uses smaller type and tighter spacing. */
+@page { size: A4; margin: 12mm; }
+@media print { body { margin: 0; max-width: none; font-size: 9pt; line-height: 1.3; } h1 { font-size: 1.25rem; margin-bottom: .4rem; }
+  h2 { font-size: 1rem; margin: .7rem 0 .25rem; break-after: avoid; } p, ul, ol { margin: .3rem 0; } table { break-inside: avoid; }
+  th, td { padding: .15rem .4rem; } hr { margin: .6rem 0; } .src { font-size: 7.5pt; } }
 """
 
 

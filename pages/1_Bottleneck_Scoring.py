@@ -16,10 +16,12 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from pydantic import ValidationError
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+from common.contracts import load_schema  # noqa: E402
 from common.paths import stage_path  # noqa: E402
 
 st.set_page_config(page_title="Bottleneck scoring", layout="wide")
@@ -63,10 +65,16 @@ def score_records(api, records: list) -> tuple:
     fields = api.NUMERIC_FIELDS + TEXT_FIELDS + ["timestamp", "record_id"]
     good, problems = [], []
     for i, record in enumerate(records):
+        # Blank CSV cells arrive as NaN; treat them as "missing" so the contract check names the real problem.
+        values = {k: (None if pd.isna(record[k]) else record[k]) for k in fields if k in record}
+        if values.get("record_id") is not None:
+            values["record_id"] = str(values["record_id"])
         try:
-            good.append(api.Shipment(**{k: record.get(k) for k in fields if k in record}))
-        except Exception as err:  # pydantic ValidationError: show it to the planner
-            problems.append({"row": i, "problem": str(err).splitlines()[1] if "\n" in str(err) else str(err)})
+            good.append(api.Shipment(**values))
+        except ValidationError as err:
+            # One readable line per broken field, e.g. "dwell_time_hours: Input should be greater than or equal to 0".
+            reasons = [f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in err.errors()]
+            problems.append({"row": i, "problem": "; ".join(reasons)})
     answers = api.service().score(good) if good else []
     for answer, shipment in zip(answers, good):
         answer["node"] = shipment.current_node_id
@@ -156,6 +164,8 @@ with browse_tab:
 # Step 5: score a brand-new shipment typed in by hand, or a whole CSV file.
 with new_tab:
     nodes = sorted(api._node_ids())
+    # The choice lists come from the telemetry contract, so the form can never offer a value the API rejects.
+    allowed = {c["name"]: c.get("allowed") for c in load_schema("telemetry")["columns"]}
     with st.form("new_shipment"):
         g = st.columns(3)
         values = {
@@ -167,8 +177,8 @@ with new_tab:
             "labor_deficit_ratio": g[1].number_input("Labour shortage (0-1)", 0.0, 1.0, 0.05),
             "equipment_availability_pct": g[2].number_input("Equipment available (%)", 0.0, 100.0, 92.0),
             "historical_delay_rate": g[2].number_input("Historical delay rate (0-1)", 0.0, 1.0, 0.3),
-            "priority_tier": g[2].selectbox("Priority", ["STANDARD", "EXPEDITED", "CRITICAL_MEDICAL", "PERISHABLE_COLD_CHAIN"]),
-            "carrier_code": g[0].selectbox("Carrier", ["MSC", "MSK", "CMA", "COSCO", "HAPAG", "ONE", "EVERGREEN", "HMM", "YANGMING", "ZIM"]),
+            "priority_tier": g[2].selectbox("Priority", allowed["priority_tier"]),
+            "carrier_code": g[0].selectbox("Carrier", allowed["carrier_code"]),
             "origin_port": g[1].selectbox("Origin", nodes, index=nodes.index("PORT_CN_SHA") if "PORT_CN_SHA" in nodes else 0),
             "destination_port": g[2].selectbox("Destination", nodes, index=nodes.index("PORT_US_LAX") if "PORT_US_LAX" in nodes else 0),
             "current_node_id": g[0].selectbox("Current location", nodes, index=nodes.index("CHOKE_SUEZ") if "CHOKE_SUEZ" in nodes else 0),
@@ -186,7 +196,11 @@ with new_tab:
 
     uploaded = st.file_uploader("Or upload a CSV with the telemetry columns (up to 1,000 rows)", type="csv")
     if uploaded is not None:
-        answers, problems = score_records(api, pd.read_csv(uploaded).head(api.MAX_BATCH).to_dict(orient="records"))
+        upload = pd.read_csv(uploaded)
+        if len(upload) > api.MAX_BATCH:
+            # Same limit as the batch API; say so instead of cutting rows off silently.
+            st.warning(f"The file has {len(upload):,} rows; only the first {api.MAX_BATCH:,} are scored.")
+        answers, problems = score_records(api, upload.head(api.MAX_BATCH).to_dict(orient="records"))
         if problems:
             st.warning(f"{len(problems)} row(s) break the data contract and were not scored.")
             st.dataframe(pd.DataFrame(problems), hide_index=True)
