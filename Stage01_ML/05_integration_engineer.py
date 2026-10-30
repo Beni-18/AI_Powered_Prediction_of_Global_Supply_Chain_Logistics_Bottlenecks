@@ -143,10 +143,30 @@ class Service:
         self.model_version = str(self.champion.get("model_version", "unknown"))
         self.threshold = float(self.champion["threshold"])
         self.model = self.pipeline.models[self.model_name]
+        # Every trained model can be served, each at its OWN alert threshold (chosen on validation by Role 4's
+        # evaluation, eval_model_comparison.csv). The champion stays the default.
+        self.thresholds = self._model_thresholds()
+        self.available = [m for m in self.thresholds
+                          if m in self.pipeline.models and hasattr(self.pipeline.models[m], "predict_proba")]
         self.detector = self.pipeline.models.get("isolation_forest")
         self.num_cols, self.cat_cols = self._feature_columns()
         self.history = self._node_dwell_history()
         self.global_drivers = _global_drivers()
+
+    def _model_thresholds(self) -> dict:
+        """Alert threshold per model from Role 4's evaluation (the champion's comes from eval_champion.json)."""
+        path = stage_path(STAGE, "reports", "eval_model_comparison.csv")
+        table = pd.read_csv(path).set_index("model_name")["threshold"].to_dict() if path.exists() else {}
+        table[self.model_name] = self.threshold
+        return {name: float(t) for name, t in table.items()}
+
+    def resolve(self, model_name: str | None) -> str:
+        """The model to use: the one asked for if it can be served, otherwise an error; None means the champion."""
+        if model_name in (None, "", self.model_name):
+            return self.model_name
+        if self.stub or model_name not in self.available:
+            raise ValueError(f"unknown model '{model_name}'; available: {', '.join(self.available)}")
+        return model_name
 
     def _feature_columns(self) -> tuple:
         """Numeric and text feature lists exactly as Role 1's pipeline was fitted."""
@@ -188,10 +208,12 @@ class Service:
         window = dwell[max(0, end - ROLLING_WINDOW):end]
         return float(window.mean()) if len(window) else self.history["median"]
 
-    def score(self, rows: list) -> list:
-        """Score shipments with the champion model and return contract-shaped answers."""
+    def score(self, rows: list, model_name: str | None = None) -> list:
+        """Score shipments with one model (default: the champion) and return contract-shaped answers."""
         if self.stub:
             return [_stub_answer(r) for r in rows]
+        name = self.resolve(model_name)
+        model, threshold = self.pipeline.models[name], self.thresholds[name]
         frame = pd.DataFrame([r.model_dump() for r in rows])
         frame["timestamp"] = frame["timestamp"].fillna(pd.Timestamp.now(tz="UTC").strftime(TS_FORMAT))
         # Same features as training: node-relative inputs use the train medians stored in the fitted pipeline.
@@ -200,9 +222,9 @@ class Service:
         features["roll_node_dwell_mean_24h"] = [
             self._rolling_dwell(rid, n, ts) for rid, n, ts in zip(frame["record_id"], frame["current_node_id"], frame["timestamp"])]
         X = self.pipeline.transform(features, self.num_cols, self.cat_cols)
-        proba = self.model.predict_proba(X)
+        proba = model.predict_proba(X)
         anomalous = self.detector.predict(X) == -1 if self.detector is not None else np.zeros(len(X), dtype=bool)
-        drivers = self._drivers(X)
+        drivers = self._drivers(X, model)
         out = []
         for i, row in enumerate(rows):
             p = proba[i]
@@ -212,22 +234,23 @@ class Service:
                 "probabilities": {c: round(float(v), 4) for c, v in zip(CLASSES, p)},
                 "risk_score": round(float(min(1.0, p[2] + 0.5 * p[1])), 4),
                 # The alert uses Role 4's cost-based threshold, not "most likely class".
-                "alert": bool(p[2] >= self.threshold),
-                "alert_threshold": self.threshold,
+                "alert": bool(p[2] >= threshold),
+                "alert_threshold": threshold,
                 "anomaly_flag": bool(anomalous[i]),
                 "top_drivers": drivers[i],
-                "model_name": self.model_name,
+                "model_name": name,
+                "is_champion": name == self.model_name,
                 "model_version": self.model_version,
                 "requires_operator_review": True,
             })
         return out
 
-    def _drivers(self, X: np.ndarray) -> list:
+    def _drivers(self, X: np.ndarray, model) -> list:
         """Top 3 reasons per shipment: per-row contributions for a linear model, else the global SHAP ranking."""
         names = self.pipeline.feature_names_out
-        if hasattr(self.model, "coef_"):
+        if hasattr(model, "coef_"):
             # Contribution to the CRITICAL score = weight x standardised value; keep the three biggest pushes up.
-            contrib = X * self.model.coef_[2]
+            contrib = X * model.coef_[2]
             return [[names[j] for j in np.argsort(-row)[:3]] for row in contrib]
         return [self.global_drivers[:3]] * len(X)
 
@@ -290,18 +313,34 @@ def model_info() -> dict:
             "requires_operator_review": True}
 
 
+@app.get("/models")
+def models() -> dict:
+    """Every model that can be served, with its own alert threshold; the champion is the default."""
+    s = service()
+    return {"champion": s.model_name, "models": [{"model_name": m, "alert_threshold": s.thresholds[m], "is_champion": m == s.model_name}
+                                                for m in getattr(s, "available", [])]}
+
+
+def _score_or_422(rows: list, model: str | None) -> list:
+    """Score with the requested model; an unknown model name is a clear 422, not a crash."""
+    try:
+        return service().score(rows, model_name=model)
+    except ValueError as err:
+        raise HTTPException(status_code=422, detail=str(err)) from None
+
+
 @app.post("/predict")
-def predict(shipment: Shipment) -> dict:
-    """Score one shipment."""
-    return service().score([shipment])[0]
+def predict(shipment: Shipment, model: str | None = None) -> dict:
+    """Score one shipment. Optional ?model=xgboost picks another trained model (see /models)."""
+    return _score_or_422([shipment], model)[0]
 
 
 @app.post("/predict/batch")
-def predict_batch(batch: Batch) -> dict:
-    """Score up to 1,000 shipments in one call."""
+def predict_batch(batch: Batch, model: str | None = None) -> dict:
+    """Score up to 1,000 shipments in one call. Optional ?model= as for /predict."""
     if len(batch.shipments) > MAX_BATCH:
         raise HTTPException(status_code=422, detail=f"at most {MAX_BATCH} shipments per call")
-    return {"results": service().score(batch.shipments), "requires_operator_review": True}
+    return {"results": _score_or_422(batch.shipments, model), "requires_operator_review": True}
 
 
 # ------------------------------------------------------------------ script mode: latency + field guide

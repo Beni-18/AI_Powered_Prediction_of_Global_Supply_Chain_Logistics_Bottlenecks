@@ -24,15 +24,20 @@ NODE_SYMBOL = {"Port": "circle", "Chokepoint": "diamond", "Rail hub": "square", 
 CATCH_LIMIT = 0.5   # a node where the alert catches fewer than half of the real critical delays needs a human check
 MIN_CRITICAL = 10   # ...but only judge nodes with at least 10 real critical delays in the test period
 
-# Step 1: the decision rule in force and the scored test period.
+# Step 1: load the selected model's info and the scored test period.
 champion = ui.read_json(stage_path(1, "reports", "eval_champion.json"))
-scored = ui.scored_period("test")
+model_name = ui.selected_model()
+models = {m["model_name"]: m for m in ui.available_models()}
+active = models.get(model_name, {"alert_threshold": champion.get("threshold", 0.5), "is_champion": True})
+scored = ui.scored_period("test", model_name=model_name)
 summary = ui.node_summary(scored)
 start, end = pd.to_datetime(scored["timestamp"]).agg(["min", "max"])
 
 st.title("Network overview")
+active_label = ui.model_label(model_name or champion.get("model_name", "STUB"))
+champ_note = "" if active.get("is_champion") else " · **not the champion**"
 st.caption(f"Stage 1 · shipment delay risk · test period {start:%d %b} – {end:%d %b %Y} (never seen in training) · "
-           f"model **{ui.model_label(champion.get('model_name', 'STUB'))}** · simulated data v1 · every alert needs a planner's review")
+           f"model **{active_label}**{champ_note} · simulated data v1 · every alert needs a planner's review")
 
 # Step 2: headline numbers for the period.
 crit = scored["delay_status"] == "CRITICAL_DELAY"
@@ -44,8 +49,8 @@ tiles[0].metric("Shipments", f"{len(scored):,}", help="Shipment snapshots scored
 tiles[1].metric("Alerts", f"{alerts:,}", help="Alert = P(critical) at or above the alert threshold")
 tiles[2].metric("Critical caught", f"{caught / crit.sum():.0%}", help=f"{caught:,} of {int(crit.sum()):,} shipments that really ended 24 h+ late")
 tiles[3].metric("False alarms /100", f"{100 * false_alarms / alerts:.0f}", help="Per 100 alerts. Team budget: 40 (docs/decisions/0004)")
-tiles[4].metric("Alert threshold", f"{champion.get('threshold', 0.5):.2f}",
-                help=f"P(critical) for model {champion.get('model_name', 'STUB')}, chosen on validation by lowest expected cost")
+tiles[4].metric("Alert threshold", f"{active['alert_threshold']:.2f}",
+                help=f"P(critical) for model {active_label}, chosen on validation by lowest expected cost")
 
 # Step 3: the network map across the full width, then the node table and the weak spots.
 with st.container():
