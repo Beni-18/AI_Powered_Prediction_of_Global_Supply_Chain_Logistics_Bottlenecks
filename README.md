@@ -19,12 +19,14 @@ for 7 days across a trade network (DL), **reads** carrier and customs advisories
 
 ## Team and roles
 
-| # | Role | Scripts (all five stages) | Commit type | Role file |
-|---|---|---|---|---|
-| 1 | ML Engineer (model role) | `03_*` | `ml` | [ROLE_1_ML_ENGINEER](docs/roles/ROLE_1_ML_ENGINEER.md) |
-| 2 | EDA Engineer (also prompt/workflow) | `02_*` | `eda` | [ROLE_2_EDA_ENGINEER](docs/roles/ROLE_2_EDA_ENGINEER.md) |
-| 3 | Data & Integration Engineer | `01_*`, `05_*`, app, repo | `data`, `integ` | [ROLE_3_DATA_INTEGRATION_ENGINEER](docs/roles/ROLE_3_DATA_INTEGRATION_ENGINEER.md) |
-| 4 | Evaluation Engineer | `04_*`, claims ledger | `eval` | [ROLE_4_EVALUATION_ENGINEER](docs/roles/ROLE_4_EVALUATION_ENGINEER.md) |
+**Live app (Streamlit):** https://aipoweredpredictionofglobalsupplychainlogisticsbottlenecks-fut.streamlit.app/
+
+| # | Member | Role | Scripts (all five stages) | Commit type | Role file |
+|---|---|---|---|---|---|
+| 1 | [Santhosh K](https://github.com/SANTHOSH-K06) | ML Engineer (model role) | `03_*` | `ml` | [ROLE_1_ML_ENGINEER](docs/roles/ROLE_1_ML_ENGINEER.md) |
+| 2 | [Isha Miruthika](https://github.com/ishamiruthika23) | EDA Engineer (also prompt/workflow) | `02_*` | `eda` | [ROLE_2_EDA_ENGINEER](docs/roles/ROLE_2_EDA_ENGINEER.md) |
+| 3 | [Pravin Lenin Naidu](https://github.com/Pravin292) | Data & Integration Engineer | `01_*`, `05_*`, app, repo | `data`, `integ` | [ROLE_3_DATA_INTEGRATION_ENGINEER](docs/roles/ROLE_3_DATA_INTEGRATION_ENGINEER.md) |
+| 4 | [Bennish Christopher](https://github.com/Beni-18) | Evaluation Engineer | `04_*`, claims ledger | `eval` | [ROLE_4_EVALUATION_ENGINEER](docs/roles/ROLE_4_EVALUATION_ENGINEER.md) |
 
 ## Five-day plan
 
