@@ -1,32 +1,355 @@
 """ROLE: INTEGRATION ENGINEER  |  STAGE 01 - MACHINE LEARNING
-Owner: Role 3 - Data & Integration Engineer
-Full instructions: docs/roles/ROLE_3_DATA_INTEGRATION_ENGINEER.md  (find the section for Day 1)
+Owner: Role 3 - Data & Integration Engineer (integration hat).
+Built by Role 4 at the team lead's request to finish Stage 1; Role 3 to review.
+Full instructions: docs/roles/ROLE_3_DATA_INTEGRATION_ENGINEER.md (Day 1).
 
-WHAT THIS SCRIPT MUST DO
-    Serve the champion model through a FastAPI /predict endpoint with operator-review flag, build the Stage 1 control-tower page and the one-page Ops Field Guide.
+WHAT THIS FILE DOES
+    1. A FastAPI service that scores shipments with the champion model chosen by Role 4.
+       Start it from the stage folder:   uvicorn 05_integration_engineer:app --port 8001
+    2. Run as a script (python 05_integration_engineer.py) it measures the API's own latency with 1,000
+       in-process calls and writes the one-page Ops Field Guide for planners.
 
-INPUT : Stage01_ML/artifacts/* + Stage01_ML/reports/eval_*.json
-OUTPUT: FastAPI app (uvicorn 05_integration_engineer:app) + Stage01_ML/reports/integ_ops_field_guide.md
+READS : Stage01_ML/artifacts/stage01_models.joblib, artifacts/model_card.json     (Role 1)
+        Stage01_ML/reports/eval_champion.json, eval_metrics.json                   (Role 4: model + alert threshold)
+        Stage01_ML/predictions/feature_importance_matrix.csv                       (Role 1: top drivers)
+        Stage01_ML/data/prepared_dataset.csv.gz                                    (Role 3: recent node history)
+WRITES: Stage01_ML/reports/integ_latency.json, integ_ops_field_guide.md
 
-STATUS: NOT IMPLEMENTED YET. Replace everything below the line with the real code.
-Comment standard: every logical step gets a plain-English comment (see docs/08_COMMENTING_STANDARD.md).
-Exit code 3 means "not implemented"; run_pipeline.py treats it as SKIPPED, not as a failure.
+SAFETY: decision support only. Nothing here books, reroutes or changes a shipment, and every response
+carries requires_operator_review: true.
 """
 
+import importlib.util
+import json
+from contextlib import asynccontextmanager
 import sys
+import time
+from datetime import date
+from functools import lru_cache
 from pathlib import Path
+from typing import Literal, Optional
 
 # Make "import common" work when this file is run from inside the stage folder.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from common.paths import stage_path  # noqa: E402,F401  (use this instead of hard-coded folders)
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+from fastapi import FastAPI, HTTPException  # noqa: E402
+from pydantic import BaseModel, Field, create_model, field_validator  # noqa: E402
+
+from common.contracts import load_node_ids, load_schema  # noqa: E402
+from common.paths import CONTRACTS_DIR, stage_path  # noqa: E402
 from common.seed import set_global_seed  # noqa: E402
+
+STAGE = 1
+CLASSES = ["ON_TIME", "AT_RISK", "CRITICAL_DELAY"]
+MAX_BATCH = 1000            # from the Role 3 file: batch endpoint takes up to 1,000 rows
+ROLLING_WINDOW = 24         # roll_node_dwell_mean_24h = mean of the previous 24 records at the node (Role 1's feature)
+LATENCY_CALLS = 1000        # from the Role 3 file: measure latency with 1,000 calls
+NUMERIC_FIELDS = ["dwell_time_hours", "throughput_teu_per_hr", "capacity_utilization_pct", "customs_hold_hours",
+                  "weather_severity_index", "labor_deficit_ratio", "equipment_availability_pct", "historical_delay_rate"]
+
+
+# ------------------------------------------------------------------ request model built from the contract
+
+def _shipment_model() -> type[BaseModel]:
+    """Build the request body from contracts/schemas/telemetry.schema.json so the API enforces the same ranges."""
+    columns = {c["name"]: c for c in load_schema("telemetry")["columns"]}
+    fields = {}
+    for name in NUMERIC_FIELDS:
+        col = columns[name]
+        # Out-of-range values give a clear 422 error instead of a silent wrong score.
+        fields[name] = (float, Field(..., ge=col.get("min"), le=col.get("max")))
+    for name in ("priority_tier", "carrier_code"):
+        fields[name] = (Literal[tuple(columns[name]["allowed"])], ...)
+    for name in ("origin_port", "destination_port", "current_node_id"):
+        fields[name] = (str, ...)
+    fields["timestamp"] = (Optional[str], Field(None, description="ISO time of the snapshot; defaults to now (UTC)"))
+    fields["record_id"] = (Optional[str], None)
+    return create_model("Shipment", __base__=_NodeCheck, **fields)
+
+
+class _NodeCheck(BaseModel):
+    """Shared validator: node ids must exist in contracts/network_nodes.csv."""
+
+    @field_validator("origin_port", "destination_port", "current_node_id", check_fields=False)
+    @classmethod
+    def _known_node(cls, value: str) -> str:
+        if value not in _node_ids():
+            raise ValueError(f"unknown node id '{value}' (see contracts/network_nodes.csv)")
+        return value
+
+
+@lru_cache(maxsize=1)
+def _node_ids() -> set:
+    """Official node ids, read once."""
+    return load_node_ids()
+
+
+Shipment = _shipment_model()
+
+
+class Batch(BaseModel):
+    """Up to 1,000 shipments in one call."""
+
+    shipments: list[Shipment] = Field(..., min_length=1, max_length=MAX_BATCH)
+
+
+# ------------------------------------------------------------------ loading the model once
+
+def _load_role1_module():
+    """Import Role 1's training script so its saved pipeline object (class Stage01Pipeline) can be unpickled."""
+    spec = importlib.util.spec_from_file_location("stage01_ml_engineer", Path(__file__).with_name("03_ml_engineer.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    # The artefact was saved while 03_ml_engineer.py ran as __main__, so pickle looks for __main__.Stage01Pipeline.
+    setattr(sys.modules["__main__"], "Stage01Pipeline", module.Stage01Pipeline)
+    return module
+
+
+class Service:
+    """Everything the endpoints need: the fitted pipeline, the champion choice, and recent node history."""
+
+    def __init__(self):
+        champion_file = stage_path(STAGE, "reports", "eval_champion.json")
+        artefact = stage_path(STAGE, "artifacts", "stage01_models.joblib")
+        self.card = _read_json(stage_path(STAGE, "artifacts", "model_card.json"))
+        self.champion = _read_json(champion_file)
+        self.stub = not (artefact.exists() and self.champion)
+        if self.stub:
+            # Role 3 file: if the artefact is missing, serve a stub and say so loudly.
+            self.model_name, self.model_version, self.threshold = "STUB", "STUB", 0.5
+            return
+        import joblib
+
+        self.role1 = _load_role1_module()
+        self.pipeline = joblib.load(artefact)
+        self.model_name = self.champion["model_name"]
+        self.model_version = str(self.champion.get("model_version", "unknown"))
+        self.threshold = float(self.champion["threshold"])
+        self.model = self.pipeline.models[self.model_name]
+        self.detector = self.pipeline.models.get("isolation_forest")
+        self.num_cols, self.cat_cols = self._feature_columns()
+        self.history = self._recent_node_dwell()
+        self.global_drivers = _global_drivers()
+
+    def _feature_columns(self) -> tuple:
+        """Numeric and text feature lists exactly as Role 1's pipeline was fitted."""
+        num_cols = list(self.pipeline.numeric_imputer_medians)
+        cat_cols = list(self.pipeline.encoder.feature_names_in_)
+        return num_cols, cat_cols
+
+    def _recent_node_dwell(self) -> dict:
+        """Last 24 dwell values per node from the prepared dataset, used to build the rolling-dwell feature."""
+        path = stage_path(STAGE, "data", "prepared_dataset.csv.gz")
+        if not path.exists():
+            return {}
+        df = pd.read_csv(path, usecols=["timestamp", "current_node_id", "dwell_time_hours"]).sort_values("timestamp")
+        return {node: list(g["dwell_time_hours"].tail(ROLLING_WINDOW)) for node, g in df.groupby("current_node_id")}
+
+    def score(self, rows: list) -> list:
+        """Score shipments with the champion model and return contract-shaped answers."""
+        if self.stub:
+            return [_stub_answer(r) for r in rows]
+        frame = pd.DataFrame([r.model_dump() for r in rows])
+        frame["timestamp"] = frame["timestamp"].fillna(pd.Timestamp.now(tz="UTC").isoformat())
+        features, _ = self.role1.engineer_features(frame)
+        # A single request has no history of its own, so the rolling dwell comes from the node's recent records.
+        features["roll_node_dwell_mean_24h"] = [
+            float(np.mean(self.history[n])) if self.history.get(n) else float(d)
+            for n, d in zip(frame["current_node_id"], frame["dwell_time_hours"])]
+        X = self.pipeline.transform(features, self.num_cols, self.cat_cols)
+        proba = self.model.predict_proba(X)
+        anomalous = self.detector.predict(X) == -1 if self.detector is not None else np.zeros(len(X), dtype=bool)
+        drivers = self._drivers(X)
+        out = []
+        for i, row in enumerate(rows):
+            p = proba[i]
+            out.append({
+                "record_id": row.record_id,
+                "label": CLASSES[int(np.argmax(p))],
+                "probabilities": {c: round(float(v), 4) for c, v in zip(CLASSES, p)},
+                "risk_score": round(float(min(1.0, p[2] + 0.5 * p[1])), 4),
+                # The alert uses Role 4's cost-based threshold, not "most likely class".
+                "alert": bool(p[2] >= self.threshold),
+                "alert_threshold": self.threshold,
+                "anomaly_flag": bool(anomalous[i]),
+                "top_drivers": drivers[i],
+                "model_name": self.model_name,
+                "model_version": self.model_version,
+                "requires_operator_review": True,
+            })
+        return out
+
+    def _drivers(self, X: np.ndarray) -> list:
+        """Top 3 reasons per shipment: per-row contributions for a linear model, else the global SHAP ranking."""
+        names = self.pipeline.feature_names_out
+        if hasattr(self.model, "coef_"):
+            # Contribution to the CRITICAL score = weight x standardised value; keep the three biggest pushes up.
+            contrib = X * self.model.coef_[2]
+            return [[names[j] for j in np.argsort(-row)[:3]] for row in contrib]
+        return [self.global_drivers[:3]] * len(X)
+
+
+def _stub_answer(row) -> dict:
+    """Answer used only while no trained model exists."""
+    return {"record_id": row.record_id, "label": "ON_TIME", "probabilities": dict(zip(CLASSES, [1.0, 0.0, 0.0])),
+            "risk_score": 0.0, "alert": False, "alert_threshold": 0.5, "anomaly_flag": False, "top_drivers": [],
+            "model_name": "STUB", "model_version": "STUB", "requires_operator_review": True}
+
+
+def _read_json(path: Path) -> dict:
+    """Read a JSON file, or return an empty dict if it does not exist yet."""
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def _global_drivers() -> list:
+    """Feature names ranked by mean |SHAP| for CRITICAL from Role 1's importance matrix."""
+    path = stage_path(STAGE, "predictions", "feature_importance_matrix.csv")
+    if not path.exists():
+        return []
+    return list(pd.read_csv(path).sort_values("shap_mean_abs_critical", ascending=False)["feature"])
+
+
+@lru_cache(maxsize=1)
+def service() -> Service:
+    """Load the model once per process."""
+    return Service()
+
+
+# ------------------------------------------------------------------ the API
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Load the model once at start-up, on the main thread.
+
+    Loading it lazily inside a request worker thread crashed on macOS (XGBoost's OpenMP runtime), so we load first.
+    """
+    service()
+    yield
+
+
+app = FastAPI(title="CASCADE Stage 1 - shipment bottleneck scoring",
+              description="Decision support only: every answer requires operator review.", lifespan=lifespan)
+
+
+@app.get("/health")
+def health() -> dict:
+    """Liveness check; also says whether a real model or the stub is being served."""
+    return {"status": "ok", "model_version": service().model_version, "stub": service().stub}
+
+
+@app.get("/model-info")
+def model_info() -> dict:
+    """Which model is served, at which alert threshold, and who chose it."""
+    s = service()
+    return {"model_name": s.model_name, "model_version": s.model_version, "alert_threshold": s.threshold,
+            "champion_file": s.champion, "model_card": {k: s.card.get(k) for k in ("model_name", "created_utc", "feature_count",
+                                                                                  "champion_proposal", "candidates")},
+            "requires_operator_review": True}
+
+
+@app.post("/predict")
+def predict(shipment: Shipment) -> dict:
+    """Score one shipment."""
+    return service().score([shipment])[0]
+
+
+@app.post("/predict/batch")
+def predict_batch(batch: Batch) -> dict:
+    """Score up to 1,000 shipments in one call."""
+    if len(batch.shipments) > MAX_BATCH:
+        raise HTTPException(status_code=422, detail=f"at most {MAX_BATCH} shipments per call")
+    return {"results": service().score(batch.shipments), "requires_operator_review": True}
+
+
+# ------------------------------------------------------------------ script mode: latency + field guide
+
+def sample_requests(n: int) -> list:
+    """Real test-split shipments from the prepared dataset, shaped as API request bodies."""
+    df = pd.read_csv(stage_path(STAGE, "data", "prepared_dataset.csv.gz"))
+    test = df[df["split"] == "test"].sample(n=min(n, (df["split"] == "test").sum()), random_state=42)
+    keep = NUMERIC_FIELDS + ["priority_tier", "carrier_code", "origin_port", "destination_port", "current_node_id", "timestamp", "record_id"]
+    return test[keep].to_dict(orient="records")
+
+
+def measure_latency(n: int = LATENCY_CALLS) -> dict:
+    """Time n single-shipment calls through the full HTTP stack (in-process test client)."""
+    from fastapi.testclient import TestClient
+
+    service()  # load the model on the main thread before any request (see lifespan)
+    bodies = sample_requests(n)
+    client = TestClient(app)
+    client.post("/predict", json=bodies[0])  # warm-up call, not counted
+    times = []
+    for body in bodies:
+        start = time.perf_counter()
+        response = client.post("/predict", json=body)
+        times.append((time.perf_counter() - start) * 1000)
+        assert response.status_code == 200 and response.json()["requires_operator_review"] is True
+    ms = np.array(times)
+    return {"calls": len(ms), "p50_ms": round(float(np.percentile(ms, 50)), 2), "p95_ms": round(float(np.percentile(ms, 95)), 2),
+            "target_p95_ms": 50, "meets_target": bool(np.percentile(ms, 95) < 50), "model_version": service().model_version,
+            "method": "FastAPI TestClient, in-process, single-shipment /predict calls on test-split rows", "date": date.today().isoformat()}
+
+
+def write_field_guide(path: Path) -> None:
+    """One page for planners. Every number is read from a team file, and the file is named in a footnote."""
+    champ = _read_json(stage_path(STAGE, "reports", "eval_champion.json"))
+    metrics = _read_json(stage_path(STAGE, "reports", "eval_metrics.json"))
+    policy = _read_json(CONTRACTS_DIR / "cost_policy.json")
+    row = next(m for m in metrics["models"] if m["model_name"] == champ["model_name"])
+    drivers = [d for d in _global_drivers() if not d.startswith(("carrier_code_", "origin_port_", "destination_port_"))][:5]
+    wording = stage_path(STAGE, "reports", "eda_field_guide_text.md")
+    cm = policy["cost_matrix_rows_true_cols_pred"]
+    lines = [
+        "# Ops Field Guide - shipment delay alerts (Stage 1)", "",
+        "**What this tool does:** for each shipment snapshot it estimates the chance of ON_TIME, AT_RISK or CRITICAL_DELAY "
+        "and raises an alert when CRITICAL is likely enough to be worth acting on. **It never reroutes, books or changes "
+        "anything: every alert needs a planner's decision.**", "",
+        "## The three statuses",
+        "| Status | Meaning |", "|---|---|",
+        "| ON_TIME | Expected delay under 6 hours [1] |",
+        "| AT_RISK | Expected delay 6 to 24 hours: watch it [1] |",
+        "| CRITICAL_DELAY | Expected delay of 24 hours or more: act [1] |", "",
+        "## When the tool raises an alert",
+        f"- Alert when the chance of CRITICAL is **{champ['threshold']:.0%} or more** (model `{champ['model_name']}`) [2].",
+        f"- On held-out data it caught **{row['at_threshold_critical_recall']:.0%}** of critical delays; "
+        f"**{row['at_threshold_false_alarms_per_100_alerts']:.0f} of every 100 alerts** were false alarms [3].",
+        f"- Why accept false alarms: a missed critical delay costs **{cm['CRITICAL_DELAY'][0]:.0f}x** an unnecessary escalation "
+        f"({cm['ON_TIME'][2]:.0f} unit) [4].", "",
+        "## Top five drivers of a CRITICAL prediction [5]",
+        "(Ranked by Role 1's SHAP analysis of the XGBoost model; the served model may weigh them slightly differently, "
+        "and each API answer lists its own top drivers.)", "",
+    ]
+    lines += [f"{i}. `{d}`" for i, d in enumerate(drivers, 1)]
+    if wording.exists():
+        lines += ["", "In plain words (Role 2):", "", wording.read_text(encoding="utf-8").split("\n", 2)[-1].strip()]
+    lines += ["", "## What the tool will not do",
+              "- It does not execute reroutes, bookings or any shipment change.",
+              "- It is trained on calibrated simulation, not live port feeds; treat it as a second opinion.",
+              "- It is weakest at maritime chokepoints (Suez, Malacca, Panama): check those by hand [6].", "",
+              "---", "Sources: [1] `contracts/label_policy.json` [2] `Stage01_ML/reports/eval_champion.json` "
+              "[3] `Stage01_ML/reports/eval_metrics.json` [4] `contracts/cost_policy.json` "
+              "[5] `Stage01_ML/predictions/feature_importance_matrix.csv` [6] `Stage01_ML/reports/eval_slices.csv`.",
+              f"Generated by `python Stage01_ML/05_integration_engineer.py` on {date.today().isoformat()}."]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main() -> int:
+    """Script mode: write the field guide and the latency report."""
+    if not stage_path(STAGE, "reports", "eval_champion.json").exists():
+        print("WAITING: reports/eval_champion.json does not exist yet (Role 4). The API would serve the STUB model.")
+        return 3
+    # Load the model BEFORE seeding: set_global_seed() imports PyTorch when it is installed, and on macOS loading
+    # PyTorch before XGBoost crashes the process (the two ship clashing copies of the OpenMP library).
+    service()
     set_global_seed()  # same random numbers on every laptop
-    print("NOT_IMPLEMENTED: 05_integration_engineer.py (Stage 01). See docs/roles/ROLE_3_DATA_INTEGRATION_ENGINEER.md.")
-    return 3
+    write_field_guide(stage_path(STAGE, "reports", "integ_ops_field_guide.md"))
+    latency = measure_latency()
+    stage_path(STAGE, "reports", "integ_latency.json").write_text(json.dumps(latency, indent=2), encoding="utf-8")
+    print(f"field guide written; latency p50 {latency['p50_ms']} ms, p95 {latency['p95_ms']} ms (target < 50 ms)")
+    return 0
 
 
 if __name__ == "__main__":
