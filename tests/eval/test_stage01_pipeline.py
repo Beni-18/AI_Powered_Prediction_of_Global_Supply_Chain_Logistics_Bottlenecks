@@ -38,7 +38,7 @@ def run(tmp_path_factory):
     ledger_before = ledger.LEDGER_PATH.read_text(encoding="utf-8")
     result = subprocess.run(
         [sys.executable, str(REPO_ROOT / "Stage01_ML" / "04_evaluation_engineer.py"), "--predictions", str(pred_path),
-         "--prepared", str(prepared_path), "--out-dir", str(out), "--n-boot", "40"],
+         "--prepared", str(prepared_path), "--model-card", str(folder / "model_card.json"), "--out-dir", str(out), "--n-boot", "40"],
         cwd=REPO_ROOT, capture_output=True, text=True)
     return result, out, ledger_before
 
@@ -90,7 +90,8 @@ def test_missing_predictions_file_exits_with_the_skipped_code(tmp_path):
 
 def _run(pred_path, prepared_path, out):
     return subprocess.run([sys.executable, str(REPO_ROOT / "Stage01_ML" / "04_evaluation_engineer.py"), "--predictions", str(pred_path),
-                           "--prepared", str(prepared_path), "--out-dir", str(out), "--n-boot", "20"],
+                           "--prepared", str(prepared_path), "--model-card", str(pred_path.parent / "model_card.json"),
+                           "--out-dir", str(out), "--n-boot", "20"],
                           cwd=REPO_ROOT, capture_output=True, text=True)
 
 
@@ -147,3 +148,10 @@ def test_a_too_good_to_be_true_champion_is_blocked_from_publishing(stand_in):
     # The perfect model wins on cost, so the champion is it, and the script must refuse to publish.
     assert result.returncode == 4 and "BLOCKED" in result.stdout
     assert not (out / "eval_champion.json").exists()
+
+
+def test_rehearsal_reads_its_own_model_card_and_the_policy_check_runs(run):
+    _, out, _ = run
+    leak = json.loads((out / "eval_leakage_tests.json").read_text(encoding="utf-8"))
+    assert leak["a_feature_policy"]["status"] == "PASS"
+    assert leak["a_feature_policy"]["n_one_hot_columns"] == 2

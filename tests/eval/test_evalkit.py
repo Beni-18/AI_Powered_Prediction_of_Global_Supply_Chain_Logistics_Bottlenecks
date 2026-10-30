@@ -316,3 +316,28 @@ def test_ids_that_follow_the_clock_pass_but_ids_that_encode_the_label_fail():
     leaky = honest.copy()
     leaky["record_id"] = [f"R{i:06d}" for i in np.argsort(order)]
     assert leakage.bookkeeping_ceiling(leaky, crit)["status"] == "FAIL"
+
+
+# ---------- fixes after Role 1's real predictions arrived ----------
+
+def test_one_hot_columns_of_text_features_are_allowed():
+    res = leakage.feature_policy_check(["dwell_time_hours", "carrier_code_MSC", "current_node_id_CHOKE_SUEZ",
+                                        "priority_tier_EXPEDITED", "cal_month", "roll_node_dwell_mean_24h"])
+    assert res["status"] == "PASS" and res["n_one_hot_columns"] == 3
+
+
+def test_one_hot_trick_cannot_smuggle_in_forbidden_or_numeric_expansions():
+    res = leakage.feature_policy_check(["dwell_time_hours_next", "shipment_id_SHP-100001", "split_test", "realized_delay_hours"])
+    assert res["status"] == "FAIL" and len(res["illegal_features"]) == 4
+
+
+def test_role_1_baseline_names_are_recognised():
+    import importlib.util
+
+    from common.paths import REPO_ROOT
+
+    spec = importlib.util.spec_from_file_location("eval04", REPO_ROOT / "Stage01_ML" / "04_evaluation_engineer.py")
+    eval04 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(eval04)
+    assert all(eval04.is_baseline(n) for n in ("majority", "rule_dwell", "logreg"))
+    assert not any(eval04.is_baseline(n) for n in ("xgboost", "xgboost_cal", "random_forest"))

@@ -26,14 +26,31 @@ def load_feature_policy() -> dict:
     return json.loads((CONTRACTS_DIR / "feature_policy.json").read_text(encoding="utf-8"))
 
 
+def _categorical_bases(allowed: set) -> list:
+    """Allowed base features that are text columns in the telemetry contract (carrier, ports, node, priority).
+
+    A model may one-hot encode these, which turns `carrier_code` into columns such as `carrier_code_MSC`.
+    """
+    schema = json.loads((CONTRACTS_DIR / "schemas" / "telemetry.schema.json").read_text(encoding="utf-8"))
+    return sorted(c["name"] for c in schema["columns"] if c["name"] in allowed and c.get("dtype") == "string")
+
+
 def feature_policy_check(features: list) -> dict:
-    """Test (a): every feature a model used must be allowed by contracts/feature_policy.json."""
+    """Test (a): every feature a model used must be allowed by contracts/feature_policy.json.
+
+    Legal: an allowed base feature, a derived feature with an allowed prefix (cal_, lag_, roll_, eng_), or a
+    one-hot column `<text base feature>_<value>`. Only TEXT base features may expand this way, so a name like
+    `dwell_time_hours_next` or `shipment_id_123` is still rejected.
+    """
     policy = load_feature_policy()
     allowed = set(policy["allowed_base_features"])
     prefixes = tuple(policy["allowed_derived_prefixes"])
     forbidden = set(policy["forbidden_features"])
-    bad = [f for f in features if f in forbidden or not (f in allowed or f.startswith(prefixes))]
-    return {"status": "PASS" if not bad else "FAIL", "n_features": len(features), "illegal_features": bad}
+    one_hot_prefixes = tuple(f"{base}_" for base in _categorical_bases(allowed))
+    one_hot = [f for f in features if f not in allowed and f.startswith(one_hot_prefixes)]
+    bad = [f for f in features if f in forbidden or not (f in allowed or f.startswith(prefixes) or f in one_hot)]
+    return {"status": "PASS" if not bad else "FAIL", "n_features": len(features), "n_one_hot_columns": len(one_hot),
+            "illegal_features": bad}
 
 
 def single_feature_ceiling(df: pd.DataFrame, features: list, is_critical: np.ndarray) -> dict:
