@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from pydantic import ValidationError
 
 from common.paths import CONTRACTS_DIR, REPO_ROOT, stage_path
 
@@ -145,10 +146,16 @@ def validate_and_score(records: list) -> tuple:
                                       "current_node_id", "timestamp", "record_id"]
     good, problems = [], []
     for i, record in enumerate(records):
+        # Blank CSV cells arrive as NaN; treat them as "missing" so the contract check names the real problem (Role 3).
+        values = {k: (None if pd.isna(record[k]) else record[k]) for k in fields if k in record}
+        if values.get("record_id") is not None:
+            values["record_id"] = str(values["record_id"])
         try:
-            good.append(module.Shipment(**{k: record.get(k) for k in fields if k in record}))
-        except Exception as err:  # pydantic ValidationError: shown to the planner as-is
-            problems.append({"row": i, "problem": str(err).splitlines()[1] if "\n" in str(err) else str(err)})
+            good.append(module.Shipment(**values))
+        except ValidationError as err:
+            # One readable line per broken field, e.g. "dwell_time_hours: Input should be greater than or equal to 0".
+            reasons = [f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in err.errors()]
+            problems.append({"row": i, "problem": "; ".join(reasons)})
     answers = module.service().score(good) if good else []
     for answer, shipment in zip(answers, good):
         answer["node"] = shipment.current_node_id

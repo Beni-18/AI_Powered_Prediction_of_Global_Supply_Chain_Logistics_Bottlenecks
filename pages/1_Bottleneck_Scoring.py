@@ -15,6 +15,7 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from common.contracts import load_schema  # noqa: E402
 from common.integration import ui  # noqa: E402
 from common.paths import stage_path  # noqa: E402
 
@@ -171,6 +172,8 @@ with browse_tab:
 # Step 3: a new shipment typed in by hand, or a CSV of up to 1,000 rows.
 with new_tab:
     node_ids = list(ui.nodes()["node_id"])
+    # Carrier and priority choices come from the telemetry contract, so the form never offers a value the API rejects (Role 3).
+    allowed = {c["name"]: c.get("allowed") for c in load_schema("telemetry")["columns"]}
 
     def pick(col, label, default):
         """Node picker that shows names but returns the official node id."""
@@ -183,9 +186,8 @@ with new_tab:
             "origin_port": pick(r[0], "From", "PORT_CN_SHA"),
             "destination_port": pick(r[1], "To", "PORT_US_LAX"),
             "current_node_id": pick(r[2], "Now at", "CHOKE_SUEZ"),
-            "carrier_code": r[3].selectbox("Carrier", ["MSC", "MSK", "CMA", "COSCO", "HAPAG", "ONE", "EVERGREEN", "HMM", "YANGMING", "ZIM"]),
-            "priority_tier": r[4].selectbox("Priority", ["STANDARD", "EXPEDITED", "CRITICAL_MEDICAL", "PERISHABLE_COLD_CHAIN"],
-                                            format_func=lambda v: v.replace("_", " ").title()),
+            "carrier_code": r[3].selectbox("Carrier", allowed["carrier_code"]),
+            "priority_tier": r[4].selectbox("Priority", allowed["priority_tier"], format_func=lambda v: v.replace("_", " ").title()),
         }
         st.markdown("##### Conditions at the node")
         c = st.columns(4)
@@ -211,7 +213,12 @@ with new_tab:
     st.divider()
     uploaded = st.file_uploader("Or score a CSV file (telemetry columns, up to 1,000 rows)", type="csv")
     if uploaded is not None:
-        answers, problems = ui.validate_and_score(pd.read_csv(uploaded).head(1000).to_dict(orient="records"))
+        upload = pd.read_csv(uploaded)
+        limit = ui.api().MAX_BATCH
+        if len(upload) > limit:
+            # Same limit as the batch API; say so instead of cutting rows off silently (Role 3).
+            st.warning(f"The file has {len(upload):,} rows; only the first {limit:,} are scored.")
+        answers, problems = ui.validate_and_score(upload.head(limit).to_dict(orient="records"))
         if problems:
             st.warning(f"{len(problems)} row(s) break the data contract and were not scored.")
             st.dataframe(pd.DataFrame(problems), hide_index=True)
