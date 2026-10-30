@@ -4,7 +4,7 @@ Owner: Role 4. Updated at the end of every day. Each entry: what, why it matters
 
 | # | Limitation | Why it matters | What we did / will do | Evidence |
 |---|---|---|---|---|
-| 1 | Shipment telemetry is **calibrated simulation**, not live port feeds | Absolute accuracy is not production accuracy | Anchored to public real data; comparisons (model vs baseline, with vs without graph) are the findings; every row labelled `data_origin` | `docs/06_DATA_SOURCES.md`, `data/raw/sim/SIM_CARD.md` |
+| 1 | Shipment outcomes are **simulated**. The simulator is driven by real data (Open-Meteo weather, IMF PortWatch traffic and port size, NY Fed GSCPI; SIM v0.3), but shipment-level delay records are not public | Absolute accuracy is not production accuracy | Real drivers wired in (decision 0010); comparisons (model vs baseline) are the findings; every row is labelled `SYNTHETIC_CALIBRATED` | `data/raw/sim/SIM_CARD.md`, `docs/06_DATA_SOURCES.md` |
 | 2 | Labels depend on the simulator's outcome model | A model could learn the simulator, not logistics | Hidden-factor noise; outcome labels; leakage tests; report skill vs baselines | `Stage01_ML/reports/eval_leakage_tests.json` (Day 1) |
 | 3 | The system recommends, humans decide | No automated rerouting | `requires_operator_review: true` in every response; no execution code path | API tests |
 | 4 | Stage 06 (agentic rerouting) is outside the five-day scope | Problem statement lists it | Documented as future work | `docs/00_PROJECT_BRIEF.md` |
