@@ -3,6 +3,6 @@
   "roc_auc_critical": 0.8363982163168404,
   "pr_auc_critical": 0.5715162064944288,
   "precision_at_k_1414": 0.5502121640735502,
-  "critical_missed_by_classifier": 298,
-  "of_those_flagged_by_detector": 50
+  "critical_missed_by_classifier": 258,
+  "of_those_flagged_by_detector": 28
 }

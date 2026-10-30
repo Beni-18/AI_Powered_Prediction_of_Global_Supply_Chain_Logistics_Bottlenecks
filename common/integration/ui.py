@@ -50,6 +50,8 @@ MODEL_LABEL = {
     "logreg": "Logistic regression",
     "xgboost": "XGBoost",
     "xgboost_cal": "XGBoost (calibrated)",
+    "xgboost_monotone": "XGBoost (monotone)",
+    "lightgbm": "LightGBM",
     "random_forest": "Random forest",
     "rule_dwell": "Dwell-time rule",
     "majority": "Always 'on time'",

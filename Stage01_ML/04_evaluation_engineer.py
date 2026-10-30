@@ -64,6 +64,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--predictions", type=Path, default=stage_path(STAGE, "predictions", "ml_predictions.csv"))
     ap.add_argument("--prepared", type=Path, default=None, help="prepared dataset (default: Stage01_ML/data/prepared_dataset.csv[.gz])")
     ap.add_argument("--model-card", type=Path, default=stage_path(STAGE, "artifacts", "model_card.json"))
+    ap.add_argument("--feature-matrix", type=Path, default=stage_path(STAGE, "predictions", "feature_matrix_test.csv.gz"),
+                    help="Role 1's test-split model inputs; lets the leakage ceiling test model-built features too")
     ap.add_argument("--out-dir", type=Path, default=None, help="where to write eval_* files (default: Stage01_ML/reports; a custom folder also disables the ledger)")
     ap.add_argument("--n-boot", type=int, default=1000, help="bootstrap resamples (1000 for real runs)")
     ap.add_argument("--no-ledger", action="store_true", help="do not touch claims/CLAIMS_LEDGER.md")
@@ -442,7 +444,8 @@ def anomaly_check(df: pd.DataFrame, champion: str, thr: float) -> dict:
             "of_those_flagged_by_detector": int((missed_by_classifier & flagged).sum())}
 
 
-def run_leakage_tests(table: pd.DataFrame, champion: str, prepared: pd.DataFrame | None, model_card: Path) -> dict:
+def run_leakage_tests(table: pd.DataFrame, champion: str, prepared: pd.DataFrame | None, model_card: Path,
+                      feature_matrix: Path | None = None) -> dict:
     """The leakage tests from the Role 4 file. A test that cannot run says NOT_RUN, and one that only covered part of the features says PARTIAL; neither is shown as a plain PASS."""
     # The purge gap comes from the frozen label policy (168 h).
     purge = json.loads((CONTRACTS_DIR / "label_policy.json").read_text(encoding="utf-8"))["split_policy"]["purge_gap_hours"]
@@ -469,7 +472,16 @@ def run_leakage_tests(table: pd.DataFrame, champion: str, prepared: pd.DataFrame
         train, test = labelled[labelled["split"] == "train"], labelled[labelled["split"] == "test"]
         is_crit_train = (train["delay_status"] == "CRITICAL_DELAY").to_numpy()
         out["b_label_shuffle_sanity"] = leakage.shuffle_label_probe(train, test, usable, "delay_status", seed=SEED)
-        out["c_single_feature_ceiling"] = leakage.single_feature_ceiling(train, tested, is_crit_train)
+        if features and feature_matrix is not None and feature_matrix.exists():
+            # Best case: Role 1 saved the exact inputs the model saw (test split), so every model-built feature
+            # (cal_, eng_, roll_, one-hot columns) can be checked, not only the columns of the prepared dataset.
+            matrix = pd.read_csv(feature_matrix).merge(labelled[["record_id", "delay_status"]], on="record_id")
+            ceiling = leakage.single_feature_ceiling(matrix, features, (matrix["delay_status"] == "CRITICAL_DELAY").to_numpy())
+            ceiling["source"] = f"Role 1 feature matrix, test split ({len(matrix):,} rows): the exact model inputs"
+        else:
+            ceiling = leakage.single_feature_ceiling(train, tested, is_crit_train)
+            ceiling["source"] = "prepared dataset, train split: base columns only"
+        out["c_single_feature_ceiling"] = ceiling
         out["c2_bookkeeping_ceiling"] = leakage.bookkeeping_ceiling(train, is_crit_train)
         out["d_time_order"] = leakage.time_order_check(labelled, purge)
 
@@ -616,7 +628,7 @@ def main() -> int:
 
     # Step 3b: leakage tests come BEFORE anything is published. A FAIL (or a SUSPECT score) blocks the champion file
     # and the ledger, so a leaky model can never be served by the API or quoted in a debate by accident.
-    leak = run_leakage_tests(table, name, prepared, args.model_card)
+    leak = run_leakage_tests(table, name, prepared, args.model_card, args.feature_matrix)
     (out_dir / "eval_leakage_tests.json").write_text(json.dumps(leak, indent=2, default=float), encoding="utf-8")
     if leak["overall"] == "FAIL":
         failed = [k for k, v in leak.items() if isinstance(v, dict) and v.get("status") == "FAIL"]
