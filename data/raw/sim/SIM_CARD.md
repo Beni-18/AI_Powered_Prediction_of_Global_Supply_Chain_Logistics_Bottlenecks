@@ -52,7 +52,7 @@ The weights 1.5 and 0.15, the curve 0.7 and 0.14, and the hidden-noise sizes wer
    - Weather is a synthetic seasonal pattern plus a typhoon bump, not Open-Meteo.
    - The global-stress wave stands in for the NY Fed GSCPI.
    - Base dwell, throughput and yard size per node *type* are rough public orders of magnitude, not per-port values.
-   - Next step: `scripts/fetch_real_data.py` and `data/calibration/*`.
+   - The real calibration files now exist in `data/calibration/` (`scripts/fetch_real_data.py`, verified 29 Oct 2026) but are **not yet wired into the simulator**. Wiring them in changes every dataset, so it is a separate, announced step.
 2. The event catalogue frequencies are our placeholder values until Role 2's `docs/decisions/0001-event-catalogue.md` is transcribed.
 3. Shipment routes are shortest paths, with no rerouting during disruptions.
 4. Chokepoint "throughput" is TEU-equivalent and has no real vessel-transit conversion yet.

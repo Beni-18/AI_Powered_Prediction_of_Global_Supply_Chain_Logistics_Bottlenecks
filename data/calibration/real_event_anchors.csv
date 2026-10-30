@@ -1,0 +1,8 @@
+event,node_id,start,end,baseline_mean_8w,event_mean,pct_change,days_baseline,days_event,source
+SUEZ_EVER_GIVEN_2021,CHOKE_SUEZ,2021-03-23,2021-03-29,16.661,6.0,-64.0,56,7,IMF PortWatch (container calls / transits)
+LA_LB_BACKLOG_2021,PORT_US_LAX,2021-09-01,2021-11-30,5.446,5.857,7.5,56,91,IMF PortWatch (container calls / transits)
+SHANGHAI_LOCKDOWN_2022,PORT_CN_SHA,2022-04-01,2022-05-31,31.268,22.967,-26.5,56,61,IMF PortWatch (container calls / transits)
+PANAMA_DROUGHT_2023,CHOKE_PANAMA,2023-08-01,2024-03-31,7.964,7.365,-7.5,56,244,IMF PortWatch (container calls / transits)
+RED_SEA_DIVERSION_2024,CHOKE_BAB_EL_MANDEB,2024-01-01,2024-06-30,13.661,4.687,-65.7,56,182,IMF PortWatch (container calls / transits)
+RED_SEA_DIVERSION_2024,CHOKE_SUEZ,2024-01-01,2024-06-30,16.75,8.731,-47.9,56,182,IMF PortWatch (container calls / transits)
+RED_SEA_DIVERSION_2024,CHOKE_CAPE_GOOD_HOPE,2024-01-01,2024-06-30,7.607,18.39,141.7,56,182,IMF PortWatch (container calls / transits)
