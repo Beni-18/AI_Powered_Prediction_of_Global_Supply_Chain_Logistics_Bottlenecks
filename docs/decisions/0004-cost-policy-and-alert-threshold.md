@@ -40,3 +40,11 @@ All numbers below are copied from `Stage01_ML/reports/eval_threshold_sensitivity
 | 2 EDA | T.R. Isha Miruthika | yes |
 | 3 Data & Integration | Pravin | yes |
 | 4 Evaluation | Bennish Christopher | yes |
+
+## Amendment 1 (2026-10-30): new champion, threshold re-chosen by the same rule
+Role 1's tuning (PR 14) produced `xgboost_monotone`, which beats the best baseline on validation cost by 0.024 per
+shipment (95% range 0.007 to 0.040), so it replaced `logreg`. As this decision requires, the threshold was re-chosen on
+validation: **alert when P(critical) >= 0.32**. On the test period it catches 82% of critical delays with 38 false alarms
+per 100 alerts (inside the budget of 40). The cost policy and the alert budget are unchanged.
+Numbers: `Stage01_ML/reports/eval_champion.json`, `eval_metrics.json`, `eval_threshold_sensitivity.csv`.
+
