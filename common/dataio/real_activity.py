@@ -33,6 +33,7 @@ PORTS_FILE = RAW_DIR / "portwatch_ports_daily.csv"
 CHOKES_FILE = RAW_DIR / "portwatch_chokepoints_daily.csv"
 SHARED_PORT_DROPPED = "PORT_US_LGB"   # same PortWatch series as PORT_US_LAX (see module docstring)
 MAX_FILL_DAYS = 3                      # a missing day is carried forward at most 3 days, longer gaps stay flagged
+REAL_TRAIN_END = pd.Timestamp("2024-01-01")   # real-track train = 2019-2023 (see real_split_boundaries)
 
 
 def _fetch_module():
@@ -74,8 +75,10 @@ def load_real_daily(node_order: list) -> tuple[pd.DataFrame, dict]:
     # Step 2: a short gap (<= 3 days) takes the last known day (past only); a negative count is impossible.
     grid["activity"] = grid.groupby("node_id")["activity"].ffill(limit=MAX_FILL_DAYS)
     still_missing = grid["activity"].isna()
-    # Longer gaps (or the very first days of a series) take the node's overall median and stay flagged.
-    grid["activity"] = grid["activity"].fillna(grid.groupby("node_id")["activity"].transform("median"))
+    # Longer gaps (or the very first days of a series) take the node's TRAIN-years median and stay flagged.
+    # Train years only, so a filled day never carries information from the val/test years.
+    train_median = grid[(grid["date"] < REAL_TRAIN_END) & ~grid["is_imputed"]].groupby("node_id")["activity"].median()
+    grid["activity"] = grid["activity"].fillna(grid["node_id"].map(train_median))
     grid["activity"] = grid["activity"].clip(lower=0)
     grid["source_id"] = grid.groupby("node_id")["source_id"].transform(lambda s: s.ffill().bfill())
     grid["data_origin"] = "REAL"
@@ -99,7 +102,7 @@ def real_split_boundaries(days: pd.DatetimeIndex, gap_days: int = 7) -> dict:
     split and make the story simple ("trained on 2019-2023, tuned on 2024, tested on 2025-26").
     """
     fmt = "%Y-%m-%dT%H:%M:%SZ"
-    train_end = pd.Timestamp("2024-01-01")
+    train_end = REAL_TRAIN_END
     val_end = pd.Timestamp("2025-01-01")
     gap = pd.Timedelta(days=gap_days)
     return {
