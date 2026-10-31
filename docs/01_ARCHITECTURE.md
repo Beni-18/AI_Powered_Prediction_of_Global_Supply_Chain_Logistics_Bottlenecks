@@ -86,6 +86,7 @@ A pattern in the *file name* decides the owner, so two people never write the sa
 | `ml_predictions` | `Stage01_ML/predictions/ml_predictions.csv` | Role 1 `03` | Role 4, Role 3 `05` | 1 |
 | `hourly_node_telemetry` | `Stage02_DL/data/hourly_node_telemetry.csv` | Role 3 `01` | Roles 1, 2, 4; Stage 5 | 2 |
 | `dl_forecasts` | `Stage02_DL/predictions/dl_forecasts.csv` | Role 1 `03` | Role 4, Role 3 | 2 |
+| (no contract) real-data track | `Stage02_DL/predictions/dl_real_forecasts.csv.gz` (same columns, `target = activity`) | Role 1 `03` | Role 4, Role 3 | 2 |
 | `incident_messages` | `Stage03_NLP/data/incident_messages.csv` | Role 3 `01` | Roles 1, 2, 4 | 3 |
 | `nlp_predictions` (+ `nlp_entities_pred.jsonl`) | `Stage03_NLP/predictions/` | Role 1 `03` | Role 4, Role 3 | 3 |
 | `slm_pairs` | `Stage04_SLM/data/slm_pairs.csv` | Role 3 `01` | Roles 1, 2, 4 | 4 |
@@ -127,6 +128,9 @@ indexes 0-10, ratios 0-1.
 | `common.modelkit` | Role 1 | `save_model_card(dir, name, version, features, train_window, metrics_on_val, seed, notes)`; `load_split(df, "train")`; `predictions_frame(...)` helpers |
 | `common.edakit` | Role 2 | `apply_style()` (one plotting style for all charts), `save_fig(fig, path)` (consistent size/dpi), `psi(a, b)`, `robust_noise_floor(series)` |
 | `common.evalkit` | Role 4 | `expected_cost(y_true, y_pred, cost_matrix)`, `choose_threshold(y_val, p_val, cost_matrix)`, `ece(y, p, bins)`, `bootstrap_ci(metric, *arrays, n=1000)`, `skill_score(err_model, err_baseline)`, `lead_time(alert_times, onset_times)`, `grounding_check(summary, facts)` |
+| `common.dataio.hourly_grid` / `real_activity` | Role 3 | `complete_grid(raw, node_ids, train_end)`, `fit_robust_scaler(grid, train_end)`, `scale_array(...)`; `load_real_daily(node_order)` (IMF PortWatch daily counts), `real_split_boundaries(days)` - **implemented Day 2** |
+| `common.modelkit` (Stage 2) | Role 1 | `dl_data.ForecastData` (+ `sim_data_from_grid`, `real_data_from_grid`, `split_origins`, `transit_edges`, `symmetric_adjacency`); `dl_models.{LSTMForecaster, TransformerForecaster, GraphForecaster, PinballLoss, save_model, load_model}`; `dl_train.{train_neural, train_xgb_lag, naive_point, conformal_margins, long_frame}`; `dl_infer.{Stage2Forecaster, sim_window, single_node_window}` - **implemented Day 2** |
+| `common.evalkit` (Stage 2) | Role 4 | `block_skill_ci`, `diebold_mariano`, `exceedance_probability`, `interval_score`, `rmse`, `smape`, `episode_hours`, `wilson_interval` - **implemented Day 2** |
 | `common.integration` | Role 3 | `StubPredictor` classes that return contract-shaped answers; `review_flag(...)` helper that always sets `requires_operator_review=True` |
 
 If you implement a function with a different signature, you must update this table in the same PR (`docs` commit).

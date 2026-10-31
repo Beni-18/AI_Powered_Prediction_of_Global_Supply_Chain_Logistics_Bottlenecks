@@ -95,7 +95,7 @@ Live status per role and stage: `python scripts/board.py`.
 | Stage | State |
 |---|---|
 | 1 ML | **Complete.** Data, EDA, models, evaluation, API and dashboard are handed over; 15 claims verified from a fresh clone (`claims/CLAIMS_LEDGER.md`) |
-| 2 DL | Models handed over (Role 1); data, EDA, evaluation and integration not started |
+| 2 DL | **Built end to end (fast mode)**: data + a real IMF PortWatch track, 4 baselines, LSTM, Transformer, graph model with 3 ablations, evaluation, forecast API, two dashboard pages. Still open: full training run (Role 1), clean-clone run + deploy (Role 3), EDA (Role 2), final evaluation + claims (Role 4). Task board: [Stage02_DL/README.md](Stage02_DL/README.md) |
 | 3 NLP, 4 SLM, 5 GenAI | Not started: scripts are stubs that exit with code 3 ("not implemented") |
 
 **Stage 1 result** (test period, `Stage01_ML/reports/eval_metrics.json`): logistic regression at an alert threshold of 0.39 catches 77.3% of critical delays with 40.1 false alarms per 100 alerts (soft budget 40), at a cost of 0.337 per shipment. The dashboard can switch between the five trained models.
