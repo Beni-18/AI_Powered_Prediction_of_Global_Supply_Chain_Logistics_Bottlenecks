@@ -1,0 +1,143 @@
+{
+  "method": "robust on log(1 + activity), per node, TRAIN days only",
+  "nodes": {
+    "CHOKE_BAB_EL_MANDEB": {
+      "log_activity": {
+        "median": 2.890372,
+        "iqr": 0.336472
+      }
+    },
+    "CHOKE_CAPE_GOOD_HOPE": {
+      "log_activity": {
+        "median": 1.791759,
+        "iqr": 0.470004
+      }
+    },
+    "CHOKE_HORMUZ": {
+      "log_activity": {
+        "median": 2.639057,
+        "iqr": 0.435318
+      }
+    },
+    "CHOKE_MALACCA": {
+      "log_activity": {
+        "median": 3.839394,
+        "iqr": 0.300105
+      }
+    },
+    "CHOKE_PANAMA": {
+      "log_activity": {
+        "median": 2.079442,
+        "iqr": 0.356675
+      }
+    },
+    "CHOKE_SUEZ": {
+      "log_activity": {
+        "median": 2.890372,
+        "iqr": 0.271934
+      }
+    },
+    "PORT_AE_JEA": {
+      "log_activity": {
+        "median": 2.564949,
+        "iqr": 0.310155
+      }
+    },
+    "PORT_BE_ANR": {
+      "log_activity": {
+        "median": 2.639057,
+        "iqr": 0.287682
+      }
+    },
+    "PORT_CN_NGB": {
+      "log_activity": {
+        "median": 3.367296,
+        "iqr": 0.361013
+      }
+    },
+    "PORT_CN_SHA": {
+      "log_activity": {
+        "median": 3.496508,
+        "iqr": 0.209721
+      }
+    },
+    "PORT_CN_YTN": {
+      "log_activity": {
+        "median": 2.302585,
+        "iqr": 0.538997
+      }
+    },
+    "PORT_DE_HAM": {
+      "log_activity": {
+        "median": 2.397895,
+        "iqr": 0.367725
+      }
+    },
+    "PORT_IN_MAA": {
+      "log_activity": {
+        "median": 0.693147,
+        "iqr": 0.405465
+      }
+    },
+    "PORT_IN_NSA": {
+      "log_activity": {
+        "median": 1.791759,
+        "iqr": 0.336472
+      }
+    },
+    "PORT_KR_PUS": {
+      "log_activity": {
+        "median": 3.526361,
+        "iqr": 0.236389
+      }
+    },
+    "PORT_LK_CMB": {
+      "log_activity": {
+        "median": 2.302585,
+        "iqr": 0.318454
+      }
+    },
+    "PORT_MY_PKG": {
+      "log_activity": {
+        "median": 3.044522,
+        "iqr": 0.405465
+      }
+    },
+    "PORT_NL_RTM": {
+      "log_activity": {
+        "median": 3.044522,
+        "iqr": 0.245122
+      }
+    },
+    "PORT_SG_SIN": {
+      "log_activity": {
+        "median": 3.663562,
+        "iqr": 0.205852
+      }
+    },
+    "PORT_US_LAX": {
+      "log_activity": {
+        "median": 1.791759,
+        "iqr": 0.336472
+      }
+    },
+    "PORT_US_NYC": {
+      "log_activity": {
+        "median": 1.94591,
+        "iqr": 0.470004
+      }
+    },
+    "PORT_US_OAK": {
+      "log_activity": {
+        "median": 1.386294,
+        "iqr": 0.510826
+      }
+    },
+    "PORT_US_SAV": {
+      "log_activity": {
+        "median": 1.609438,
+        "iqr": 0.405465
+      }
+    }
+  }
+}

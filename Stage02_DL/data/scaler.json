@@ -1,0 +1,935 @@
+{
+  "method": "robust (x - median) / IQR, per node and channel, fitted on TRAIN hours only",
+  "train_end": "2025-09-13 23:14:18+00:00",
+  "channels": [
+    "avg_dwell_time_hours",
+    "throughput_teu_per_hr",
+    "capacity_utilization_pct",
+    "customs_hold_hours",
+    "weather_severity_index",
+    "labor_deficit_ratio",
+    "equipment_availability_pct",
+    "inventory_level_teu"
+  ],
+  "nodes": {
+    "CHOKE_BAB_EL_MANDEB": {
+      "avg_dwell_time_hours": {
+        "median": 14.37,
+        "iqr": 3.40475
+      },
+      "throughput_teu_per_hr": {
+        "median": 288.953,
+        "iqr": 36.97425
+      },
+      "capacity_utilization_pct": {
+        "median": 65.8305,
+        "iqr": 6.5905
+      },
+      "customs_hold_hours": {
+        "median": 0.0,
+        "iqr": 1.0
+      },
+      "weather_severity_index": {
+        "median": 2.667,
+        "iqr": 1.18
+      },
+      "labor_deficit_ratio": {
+        "median": 0.03,
+        "iqr": 0.044
+      },
+      "equipment_availability_pct": {
+        "median": 93.409,
+        "iqr": 2.369298
+      },
+      "inventory_level_teu": {
+        "median": 13716.4135,
+        "iqr": 1373.2665
+      }
+    },
+    "CHOKE_CAPE_GOOD_HOPE": {
+      "avg_dwell_time_hours": {
+        "median": 14.214,
+        "iqr": 3.691
+      },
+      "throughput_teu_per_hr": {
+        "median": 859.245,
+        "iqr": 114.728
+      },
+      "capacity_utilization_pct": {
+        "median": 65.414,
+        "iqr": 6.7315
+      },
+      "customs_hold_hours": {
+        "median": 0.0,
+        "iqr": 1.0
+      },
+      "weather_severity_index": {
+        "median": 2.413,
+        "iqr": 1.847
+      },
+      "labor_deficit_ratio": {
+        "median": 0.043,
+        "iqr": 0.059
+      },
+      "equipment_availability_pct": {
+        "median": 92.666,
+        "iqr": 2.431235
+      },
+      "inventory_level_teu": {
+        "median": 41176.941,
+        "iqr": 4237.5875
+      }
+    },
+    "CHOKE_HORMUZ": {
+      "avg_dwell_time_hours": {
+        "median": 13.553,
+        "iqr": 4.1035
+      },
+      "throughput_teu_per_hr": {
+        "median": 694.189,
+        "iqr": 113.651
+      },
+      "capacity_utilization_pct": {
+        "median": 64.206,
+        "iqr": 7.812
+      },
+      "customs_hold_hours": {
+        "median": 0.0,
+        "iqr": 1.0
+      },
+      "weather_severity_index": {
+        "median": 1.68,
+        "iqr": 1.466
+      },
+      "labor_deficit_ratio": {
+        "median": 0.023,
+        "iqr": 0.05
+      },
+      "equipment_availability_pct": {
+        "median": 93.84,
+        "iqr": 3.025639
+      },
+      "inventory_level_teu": {
+        "median": 33030.206,
+        "iqr": 4018.7905
+      }
+    },
+    "CHOKE_MALACCA": {
+      "avg_dwell_time_hours": {
+        "median": 11.801,
+        "iqr": 3.20825
+      },
+      "throughput_teu_per_hr": {
+        "median": 2401.5095,
+        "iqr": 271.7815
+      },
+      "capacity_utilization_pct": {
+        "median": 60.6925,
+        "iqr": 6.00775
+      },
+      "customs_hold_hours": {
+        "median": 0.0,
+        "iqr": 1.0
+      },
+      "weather_severity_index": {
+        "median": 1.173,
+        "iqr": 0.834
+      },
+      "labor_deficit_ratio": {
+        "median": 0.024,
+        "iqr": 0.049
+      },
+      "equipment_availability_pct": {
+        "median": 93.414,
+        "iqr": 2.743285
+      },
+      "inventory_level_teu": {
+        "median": 115956.894,
+        "iqr": 11478.69375
+      }
+    },
+    "CHOKE_PANAMA": {
+      "avg_dwell_time_hours": {
+        "median": 12.274,
+        "iqr": 3.544
+      },
+      "throughput_teu_per_hr": {
+        "median": 316.497,
+        "iqr": 41.97
+      },
+      "capacity_utilization_pct": {
+        "median": 61.498,
+        "iqr": 6.621
+      },
+      "customs_hold_hours": {
+        "median": 0.0,
+        "iqr": 1.0
+      },
+      "weather_severity_index": {
+        "median": 1.32,
+        "iqr": 0.873
+      },
+      "labor_deficit_ratio": {
+        "median": 0.035,
+        "iqr": 0.046
+      },
+      "equipment_availability_pct": {
+        "median": 93.288,
+        "iqr": 3.159473
+      },
+      "inventory_level_teu": {
+        "median": 15034.991,
+        "iqr": 1618.815
+      }
+    },
+    "CHOKE_SUEZ": {
+      "avg_dwell_time_hours": {
+        "median": 11.781,
+        "iqr": 3.3835
+      },
+      "throughput_teu_per_hr": {
+        "median": 366.53,
+        "iqr": 47.2065
+      },
+      "capacity_utilization_pct": {
+        "median": 60.6265,
+        "iqr": 6.5255
+      },
+      "customs_hold_hours": {
+        "median": 0.0,
+        "iqr": 1.0
+      },
+      "weather_severity_index": {
+        "median": 1.32,
+        "iqr": 1.153
+      },
+      "labor_deficit_ratio": {
+        "median": 0.041,
+        "iqr": 0.066
+      },
+      "equipment_availability_pct": {
+        "median": 93.914,
+        "iqr": 2.737406
+      },
+      "inventory_level_teu": {
+        "median": 17312.421,
+        "iqr": 1863.25975
+      }
+    },
+    "DC_EU_VENLO": {
+      "avg_dwell_time_hours": {
+        "median": 45.365,
+        "iqr": 11.479
+      },
+      "throughput_teu_per_hr": {
+        "median": 69.9605,
+        "iqr": 8.686
+      },
+      "capacity_utilization_pct": {
+        "median": 62.335,
+        "iqr": 6.0295
+      },
+      "customs_hold_hours": {
+        "median": 0.0,
+        "iqr": 1.0
+      },
+      "weather_severity_index": {
+        "median": 1.607,
+        "iqr": 0.987
+      },
+      "labor_deficit_ratio": {
+        "median": 0.046,
+        "iqr": 0.045
+      },
+      "equipment_availability_pct": {
+        "median": 93.6025,
+        "iqr": 4.8845
+      },
+      "inventory_level_teu": {
+        "median": 9350.2665,
+        "iqr": 904.42425
+      }
+    },
+    "DC_US_MW_JOLIET": {
+      "avg_dwell_time_hours": {
+        "median": 44.9745,
+        "iqr": 12.16625
+      },
+      "throughput_teu_per_hr": {
+        "median": 69.5475,
+        "iqr": 8.95
+      },
+      "capacity_utilization_pct": {
+        "median": 62.0775,
+        "iqr": 6.23675
+      },
+      "customs_hold_hours": {
+        "median": 0.0,
+        "iqr": 1.0
+      },
+      "weather_severity_index": {
+        "median": 1.707,
+        "iqr": 1.153
+      },
+      "labor_deficit_ratio": {
+        "median": 0.038,
+        "iqr": 0.045
+      },
+      "equipment_availability_pct": {
+        "median": 93.674,
+        "iqr": 3.810909
+      },
+      "inventory_level_teu": {
+        "median": 9311.6185,
+        "iqr": 935.4845
+      }
+    },
+    "PORT_AE_JEA": {
+      "avg_dwell_time_hours": {
+        "median": 41.75,
+        "iqr": 12.166
+      },
+      "throughput_teu_per_hr": {
+        "median": 347.1915,
+        "iqr": 49.3635
+      },
+      "capacity_utilization_pct": {
+        "median": 64.8775,
+        "iqr": 7.94425
+      },
+      "customs_hold_hours": {
+        "median": 3.3585,
+        "iqr": 1.831
+      },
+      "weather_severity_index": {
+        "median": 1.513,
+        "iqr": 1.254
+      },
+      "labor_deficit_ratio": {
+        "median": 0.037,
+        "iqr": 0.044
+      },
+      "equipment_availability_pct": {
+        "median": 92.8805,
+        "iqr": 3.711541
+      },
+      "inventory_level_teu": {
+        "median": 56120.376,
+        "iqr": 6871.55625
+      }
+    },
+    "PORT_BE_ANR": {
+      "avg_dwell_time_hours": {
+        "median": 41.508,
+        "iqr": 9.293
+      },
+      "throughput_teu_per_hr": {
+        "median": 317.213,
+        "iqr": 38.851
+      },
+      "capacity_utilization_pct": {
+        "median": 64.624,
+        "iqr": 5.5695
+      },
+      "customs_hold_hours": {
+        "median": 4.098,
+        "iqr": 1.9565
+      },
+      "weather_severity_index": {
+        "median": 1.533,
+        "iqr": 0.98
+      },
+      "labor_deficit_ratio": {
+        "median": 0.008,
+        "iqr": 0.038
+      },
+      "equipment_availability_pct": {
+        "median": 93.024,
+        "iqr": 2.899091
+      },
+      "inventory_level_teu": {
+        "median": 51089.225,
+        "iqr": 4403.0575
+      }
+    },
+    "PORT_CN_NGB": {
+      "avg_dwell_time_hours": {
+        "median": 40.968,
+        "iqr": 10.287
+      },
+      "throughput_teu_per_hr": {
+        "median": 826.773,
+        "iqr": 108.212
+      },
+      "capacity_utilization_pct": {
+        "median": 64.454,
+        "iqr": 6.287
+      },
+      "customs_hold_hours": {
+        "median": 4.075,
+        "iqr": 1.942
+      },
+      "weather_severity_index": {
+        "median": 1.487,
+        "iqr": 1.08
+      },
+      "labor_deficit_ratio": {
+        "median": 0.028,
+        "iqr": 0.054
+      },
+      "equipment_availability_pct": {
+        "median": 93.083,
+        "iqr": 2.629224
+      },
+      "inventory_level_teu": {
+        "median": 134200.938,
+        "iqr": 13088.614
+      }
+    },
+    "PORT_CN_SHA": {
+      "avg_dwell_time_hours": {
+        "median": 42.871,
+        "iqr": 11.79725
+      },
+      "throughput_teu_per_hr": {
+        "median": 925.9525,
+        "iqr": 126.709
+      },
+      "capacity_utilization_pct": {
+        "median": 65.657,
+        "iqr": 7.23025
+      },
+      "customs_hold_hours": {
+        "median": 4.324,
+        "iqr": 2.378
+      },
+      "weather_severity_index": {
+        "median": 1.533,
+        "iqr": 0.987
+      },
+      "labor_deficit_ratio": {
+        "median": 0.019,
+        "iqr": 0.045
+      },
+      "equipment_availability_pct": {
+        "median": 92.379,
+        "iqr": 2.881057
+      },
+      "inventory_level_teu": {
+        "median": 150288.8055,
+        "iqr": 16549.624
+      }
+    },
+    "PORT_CN_YTN": {
+      "avg_dwell_time_hours": {
+        "median": 42.5365,
+        "iqr": 10.7615
+      },
+      "throughput_teu_per_hr": {
+        "median": 246.969,
+        "iqr": 33.64675
+      },
+      "capacity_utilization_pct": {
+        "median": 65.42,
+        "iqr": 6.39725
+      },
+      "customs_hold_hours": {
+        "median": 3.758,
+        "iqr": 1.832
+      },
+      "weather_severity_index": {
+        "median": 1.707,
+        "iqr": 1.18
+      },
+      "labor_deficit_ratio": {
+        "median": 0.035,
+        "iqr": 0.061
+      },
+      "equipment_availability_pct": {
+        "median": 93.1825,
+        "iqr": 3.469665
+      },
+      "inventory_level_teu": {
+        "median": 39844.5255,
+        "iqr": 3896.32025
+      }
+    },
+    "PORT_DE_HAM": {
+      "avg_dwell_time_hours": {
+        "median": 43.1415,
+        "iqr": 11.4525
+      },
+      "throughput_teu_per_hr": {
+        "median": 243.1175,
+        "iqr": 33.69175
+      },
+      "capacity_utilization_pct": {
+        "median": 65.7835,
+        "iqr": 7.2245
+      },
+      "customs_hold_hours": {
+        "median": 3.963,
+        "iqr": 1.7695
+      },
+      "weather_severity_index": {
+        "median": 1.633,
+        "iqr": 1.107
+      },
+      "labor_deficit_ratio": {
+        "median": 0.027,
+        "iqr": 0.05
+      },
+      "equipment_availability_pct": {
+        "median": 94.353,
+        "iqr": 2.40633
+      },
+      "inventory_level_teu": {
+        "median": 38874.1425,
+        "iqr": 4269.14
+      }
+    },
+    "PORT_IN_MAA": {
+      "avg_dwell_time_hours": {
+        "median": 43.525,
+        "iqr": 12.44675
+      },
+      "throughput_teu_per_hr": {
+        "median": 49.021,
+        "iqr": 7.0225
+      },
+      "capacity_utilization_pct": {
+        "median": 66.19,
+        "iqr": 7.74675
+      },
+      "customs_hold_hours": {
+        "median": 4.1205,
+        "iqr": 2.00825
+      },
+      "weather_severity_index": {
+        "median": 1.773,
+        "iqr": 0.96
+      },
+      "labor_deficit_ratio": {
+        "median": 0.035,
+        "iqr": 0.066
+      },
+      "equipment_availability_pct": {
+        "median": 93.0915,
+        "iqr": 2.861351
+      },
+      "inventory_level_teu": {
+        "median": 7942.7965,
+        "iqr": 929.59175
+      }
+    },
+    "PORT_IN_NSA": {
+      "avg_dwell_time_hours": {
+        "median": 56.556,
+        "iqr": 28.2865
+      },
+      "throughput_teu_per_hr": {
+        "median": 171.1295,
+        "iqr": 42.5045
+      },
+      "capacity_utilization_pct": {
+        "median": 75.3055,
+        "iqr": 18.71875
+      },
+      "customs_hold_hours": {
+        "median": 4.145,
+        "iqr": 2.123
+      },
+      "weather_severity_index": {
+        "median": 1.593,
+        "iqr": 1.607
+      },
+      "labor_deficit_ratio": {
+        "median": 0.035,
+        "iqr": 0.05
+      },
+      "equipment_availability_pct": {
+        "median": 93.426,
+        "iqr": 2.689109
+      },
+      "inventory_level_teu": {
+        "median": 28167.284,
+        "iqr": 7001.5525
+      }
+    },
+    "PORT_KR_PUS": {
+      "avg_dwell_time_hours": {
+        "median": 44.994,
+        "iqr": 11.726
+      },
+      "throughput_teu_per_hr": {
+        "median": 815.601,
+        "iqr": 116.36
+      },
+      "capacity_utilization_pct": {
+        "median": 66.983,
+        "iqr": 7.373
+      },
+      "customs_hold_hours": {
+        "median": 4.176,
+        "iqr": 1.925
+      },
+      "weather_severity_index": {
+        "median": 2.067,
+        "iqr": 1.42
+      },
+      "labor_deficit_ratio": {
+        "median": 0.025,
+        "iqr": 0.043
+      },
+      "equipment_availability_pct": {
+        "median": 92.378,
+        "iqr": 3.172975
+      },
+      "inventory_level_teu": {
+        "median": 133161.184,
+        "iqr": 14656.723
+      }
+    },
+    "PORT_LK_CMB": {
+      "avg_dwell_time_hours": {
+        "median": 43.56,
+        "iqr": 10.5765
+      },
+      "throughput_teu_per_hr": {
+        "median": 236.3585,
+        "iqr": 30.49925
+      },
+      "capacity_utilization_pct": {
+        "median": 65.996,
+        "iqr": 6.3805
+      },
+      "customs_hold_hours": {
+        "median": 3.8225,
+        "iqr": 1.703
+      },
+      "weather_severity_index": {
+        "median": 1.707,
+        "iqr": 1.293
+      },
+      "labor_deficit_ratio": {
+        "median": 0.017,
+        "iqr": 0.055
+      },
+      "equipment_availability_pct": {
+        "median": 93.5885,
+        "iqr": 4.062931
+      },
+      "inventory_level_teu": {
+        "median": 37823.6065,
+        "iqr": 3656.768
+      }
+    },
+    "PORT_MY_PKG": {
+      "avg_dwell_time_hours": {
+        "median": 41.174,
+        "iqr": 12.533
+      },
+      "throughput_teu_per_hr": {
+        "median": 526.448,
+        "iqr": 76.4825
+      },
+      "capacity_utilization_pct": {
+        "median": 64.515,
+        "iqr": 7.944
+      },
+      "customs_hold_hours": {
+        "median": 3.893,
+        "iqr": 1.8915
+      },
+      "weather_severity_index": {
+        "median": 0.98,
+        "iqr": 0.72
+      },
+      "labor_deficit_ratio": {
+        "median": 0.023,
+        "iqr": 0.052
+      },
+      "equipment_availability_pct": {
+        "median": 93.041,
+        "iqr": 3.060858
+      },
+      "inventory_level_teu": {
+        "median": 85128.679,
+        "iqr": 10482.103
+      }
+    },
+    "PORT_NL_RTM": {
+      "avg_dwell_time_hours": {
+        "median": 45.582,
+        "iqr": 11.9295
+      },
+      "throughput_teu_per_hr": {
+        "median": 462.914,
+        "iqr": 61.513
+      },
+      "capacity_utilization_pct": {
+        "median": 67.485,
+        "iqr": 7.4425
+      },
+      "customs_hold_hours": {
+        "median": 4.038,
+        "iqr": 1.942
+      },
+      "weather_severity_index": {
+        "median": 2.013,
+        "iqr": 1.34
+      },
+      "labor_deficit_ratio": {
+        "median": 0.039,
+        "iqr": 0.05
+      },
+      "equipment_availability_pct": {
+        "median": 92.6,
+        "iqr": 2.84007
+      },
+      "inventory_level_teu": {
+        "median": 75118.407,
+        "iqr": 8284.536
+      }
+    },
+    "PORT_SG_SIN": {
+      "avg_dwell_time_hours": {
+        "median": 41.872,
+        "iqr": 10.543
+      },
+      "throughput_teu_per_hr": {
+        "median": 987.2,
+        "iqr": 124.719
+      },
+      "capacity_utilization_pct": {
+        "median": 64.87,
+        "iqr": 6.603
+      },
+      "customs_hold_hours": {
+        "median": 3.944,
+        "iqr": 2.129
+      },
+      "weather_severity_index": {
+        "median": 1.487,
+        "iqr": 0.933
+      },
+      "labor_deficit_ratio": {
+        "median": 0.024,
+        "iqr": 0.048
+      },
+      "equipment_availability_pct": {
+        "median": 92.781,
+        "iqr": 3.636127
+      },
+      "inventory_level_teu": {
+        "median": 159579.497,
+        "iqr": 16242.921
+      }
+    },
+    "PORT_US_LAX": {
+      "avg_dwell_time_hours": {
+        "median": 41.3365,
+        "iqr": 12.7095
+      },
+      "throughput_teu_per_hr": {
+        "median": 130.1295,
+        "iqr": 19.35175
+      },
+      "capacity_utilization_pct": {
+        "median": 64.6315,
+        "iqr": 8.1425
+      },
+      "customs_hold_hours": {
+        "median": 3.352,
+        "iqr": 2.211
+      },
+      "weather_severity_index": {
+        "median": 1.247,
+        "iqr": 1.107
+      },
+      "labor_deficit_ratio": {
+        "median": 0.027,
+        "iqr": 0.055
+      },
+      "equipment_availability_pct": {
+        "median": 92.606,
+        "iqr": 4.438942
+      },
+      "inventory_level_teu": {
+        "median": 21165.499,
+        "iqr": 2666.52
+      }
+    },
+    "PORT_US_LGB": {
+      "avg_dwell_time_hours": {
+        "median": 42.613,
+        "iqr": 13.99075
+      },
+      "throughput_teu_per_hr": {
+        "median": 131.9775,
+        "iqr": 18.7835
+      },
+      "capacity_utilization_pct": {
+        "median": 65.355,
+        "iqr": 8.8935
+      },
+      "customs_hold_hours": {
+        "median": 3.6055,
+        "iqr": 1.81425
+      },
+      "weather_severity_index": {
+        "median": 1.247,
+        "iqr": 1.107
+      },
+      "labor_deficit_ratio": {
+        "median": 0.032,
+        "iqr": 0.045
+      },
+      "equipment_availability_pct": {
+        "median": 92.971,
+        "iqr": 2.985682
+      },
+      "inventory_level_teu": {
+        "median": 21402.5895,
+        "iqr": 2912.58125
+      }
+    },
+    "PORT_US_NYC": {
+      "avg_dwell_time_hours": {
+        "median": 42.169,
+        "iqr": 11.09275
+      },
+      "throughput_teu_per_hr": {
+        "median": 159.254,
+        "iqr": 21.74325
+      },
+      "capacity_utilization_pct": {
+        "median": 65.075,
+        "iqr": 6.82775
+      },
+      "customs_hold_hours": {
+        "median": 3.7685,
+        "iqr": 1.9265
+      },
+      "weather_severity_index": {
+        "median": 1.607,
+        "iqr": 1.146
+      },
+      "labor_deficit_ratio": {
+        "median": 0.023,
+        "iqr": 0.042
+      },
+      "equipment_availability_pct": {
+        "median": 93.445,
+        "iqr": 3.370922
+      },
+      "inventory_level_teu": {
+        "median": 25675.929,
+        "iqr": 2693.90325
+      }
+    },
+    "PORT_US_OAK": {
+      "avg_dwell_time_hours": {
+        "median": 44.99,
+        "iqr": 11.414
+      },
+      "throughput_teu_per_hr": {
+        "median": 69.416,
+        "iqr": 9.926
+      },
+      "capacity_utilization_pct": {
+        "median": 67.016,
+        "iqr": 7.014
+      },
+      "customs_hold_hours": {
+        "median": 3.985,
+        "iqr": 1.871
+      },
+      "weather_severity_index": {
+        "median": 2.087,
+        "iqr": 1.487
+      },
+      "labor_deficit_ratio": {
+        "median": 0.026,
+        "iqr": 0.044
+      },
+      "equipment_availability_pct": {
+        "median": 93.113,
+        "iqr": 2.724517
+      },
+      "inventory_level_teu": {
+        "median": 11178.293,
+        "iqr": 1169.891
+      }
+    },
+    "PORT_US_SAV": {
+      "avg_dwell_time_hours": {
+        "median": 40.2685,
+        "iqr": 11.069
+      },
+      "throughput_teu_per_hr": {
+        "median": 109.296,
+        "iqr": 14.85475
+      },
+      "capacity_utilization_pct": {
+        "median": 63.9775,
+        "iqr": 6.93475
+      },
+      "customs_hold_hours": {
+        "median": 4.047,
+        "iqr": 2.04975
+      },
+      "weather_severity_index": {
+        "median": 1.487,
+        "iqr": 0.91825
+      },
+      "labor_deficit_ratio": {
+        "median": 0.02,
+        "iqr": 0.04875
+      },
+      "equipment_availability_pct": {
+        "median": 92.916,
+        "iqr": 4.310386
+      },
+      "inventory_level_teu": {
+        "median": 17795.9985,
+        "iqr": 1928.92625
+      }
+    },
+    "RAIL_US_CHI_BNSF": {
+      "avg_dwell_time_hours": {
+        "median": 27.542,
+        "iqr": 6.47725
+      },
+      "throughput_teu_per_hr": {
+        "median": 148.704,
+        "iqr": 18.139
+      },
+      "capacity_utilization_pct": {
+        "median": 64.472,
+        "iqr": 5.873
+      },
+      "customs_hold_hours": {
+        "median": 0.532,
+        "iqr": 0.233
+      },
+      "weather_severity_index": {
+        "median": 1.727,
+        "iqr": 1.106
+      },
+      "labor_deficit_ratio": {
+        "median": 0.033,
+        "iqr": 0.063
+      },
+      "equipment_availability_pct": {
+        "median": 92.1215,
+        "iqr": 2.879344
+      },
+      "inventory_level_teu": {
+        "median": 19341.52,
+        "iqr": 1761.83325
+      }
+    }
+  },
+  "inverse": "x = scaled * iqr + median  (common.dataio.hourly_grid.scale_array(..., inverse=True))"
+}
