@@ -131,7 +131,8 @@ def build_real_track(node_ids: list, report: dict) -> None:
         scaler["nodes"][node] = {"log_activity": {"median": round(med, 6), "iqr": round(iqr, 6)}}
 
     out = grid.assign(date=grid["date"].dt.strftime("%Y-%m-%d"))
-    out.to_csv(stage_path(STAGE, "data", "real_daily_activity.csv.gz"), index=False)
+    out.to_csv(stage_path(STAGE, "data", "real_daily_activity.csv.gz"), index=False,
+               compression={"method": "gzip", "mtime": 0})  # fixed gzip time: same data -> same bytes
     stage_path(STAGE, "data", "real_splits.json").write_text(json.dumps(splits, indent=2))
     stage_path(STAGE, "data", "real_scaler.json").write_text(json.dumps(scaler, indent=2))
     report["real_track"] = {"status": "BUILT", **log, "split": splits}

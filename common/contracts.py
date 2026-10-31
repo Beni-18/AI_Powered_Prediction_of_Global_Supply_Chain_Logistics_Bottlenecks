@@ -219,7 +219,9 @@ def write_validated_csv(df: pd.DataFrame, schema_name: str, path: str | Path) ->
         details = "\n".join(f"  - {v}" for v in report.violations)
         raise ValueError(f"Refusing to write {path}: it breaks the '{schema_name}' contract:\n{details}")
     Path(path).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(path, index=False)
+    # A fixed gzip timestamp (mtime=0) makes a re-run with the same data give the same bytes, so git shows no change.
+    compression = {"method": "gzip", "mtime": 0} if str(path).endswith(".gz") else None
+    df.to_csv(path, index=False, compression=compression)
     return report
 
 
