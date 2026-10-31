@@ -1,4 +1,4 @@
-# Day 2 extras (install on Day 0). CPU build of PyTorch is enough; see https://pytorch.org/get-started/locally/
+# Day 2 extras on top of the root requirements.txt. A CPU build of PyTorch is enough (https://pytorch.org/get-started/locally/).
+# Tested with torch 2.15.0, xgboost 3.4.1, scikit-learn 1.9.1, pandas 3.1.0, Python 3.12 (macOS arm64).
+# The graph layers are plain dense PyTorch (common/modelkit/dl_models.py), so no graph library is needed.
 torch>=2.1
-# Optional, only if you decide to use a graph library instead of the pure-PyTorch dense GCN layer:
-# torch_geometric>=2.5
