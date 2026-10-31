@@ -124,8 +124,12 @@ def test_run_pipeline_skips_stubs_without_failing():
 
 # ---------- documentation hygiene ----------
 
+# Local, git-ignored folders (the README tells everyone to create .venv inside the repo): never part of our docs.
+LOCAL_ONLY = {"_reference", ".venv", "venv", "env", ".git"}
+
+
 def _markdown_files():
-    skip = {"_reference"}
+    skip = LOCAL_ONLY
     return [p for p in REPO_ROOT.rglob("*.md") if not skip & set(p.relative_to(REPO_ROOT).parts)]
 
 
@@ -155,7 +159,7 @@ def test_no_ai_attribution_text_in_repository_files():
     pattern = re.compile(r"^\s*co-authored-by:.*(claude|anthropic)", re.IGNORECASE | re.MULTILINE)
     offenders = []
     for path in REPO_ROOT.rglob("*"):
-        if path.is_file() and path.name not in allowed and ".git" not in path.parts and "_reference" not in path.parts and path.suffix in {".md", ".py", ".json", ".txt", ".csv", ".yml"}:
+        if path.is_file() and path.name not in allowed and not LOCAL_ONLY & set(path.relative_to(REPO_ROOT).parts) and path.suffix in {".md", ".py", ".json", ".txt", ".csv", ".yml"}:
             if pattern.search(path.read_text(encoding="utf-8", errors="ignore")):
                 offenders.append(str(path.relative_to(REPO_ROOT)))
     assert not offenders, offenders
