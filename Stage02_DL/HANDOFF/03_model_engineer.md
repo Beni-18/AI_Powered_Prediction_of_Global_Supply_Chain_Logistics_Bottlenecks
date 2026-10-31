@@ -46,6 +46,9 @@ PASS  Stage02_DL/predictions/dl_forecasts.csv.gz  (729000 rows, schema 'dl_forec
 - Role 4: rolling-origin folds (`--fold k`) are not implemented yet. Do you still want them for the Diebold-Mariano / spread analysis?
 
 ## Your tasks (Santhosh)
+**Step-by-step instructions (also for your Antigravity agent): [docs/roles/ROLE_1_STAGE02_RUNBOOK.md](../../docs/roles/ROLE_1_STAGE02_RUNBOOK.md).**
+It covers setup, the full run, the hparam study and fold backtest specs, the hand-off, the commit and the PR. Partial runs (`--models`, `--epochs`, `--track`) now write only to `artifacts/scratch/` and `predictions/scratch/` (git-ignored).
+
 1. [MUST] Review `03_dl_engineer.py` and `common/modelkit/dl_{data,models,train,infer}.py` with the tests `tests/ml/test_dl_models.py` and `tests/ml/test_dl_data.py`; you must be able to explain the transit-delayed messages and the ablation in the debate.
 2. [MUST] Full run: `cd Stage02_DL && python 03_dl_engineer.py` (hidden 64, <= 30 epochs; 1.5-2.5 h on CPU, run it overnight or on Colab). Paste the contract check above and set READY.
 3. [SHOULD] Hyper-parameter study (hidden 32/64/128, window 48/72/168) -> `artifacts/hparam_log.csv`, chosen on VAL only.

@@ -24,6 +24,7 @@ WRITES: Stage02_DL/predictions/dl_forecasts.csv.gz        (contract dl_forecasts
 
 RUN   : python 03_dl_engineer.py --fast      (from Stage02_DL/; about 10 min on a laptop CPU: hidden 32, <= 10 epochs)
         python 03_dl_engineer.py             (full run: hidden 64, <= 30 epochs; ~45-60 min on CPU)
+        Partial runs (--models / --epochs / --track sim|real) write to artifacts/scratch/ and predictions/scratch/ only.
         python 03_dl_engineer.py --noise-channel   (Role 2's sanity test: trains one LSTM with 2 extra noise inputs,
                                                     saves artifacts/noise_check/lstm_noise.pt, writes no forecasts)
 """
@@ -68,6 +69,18 @@ THREADS = 4                          # CPU threads for PyTorch and XGBoost (a ty
 SIM_EVAL_HOURS = (0, 6, 12, 18)      # role file: val/test forecast origins every 6 hours
 BASELINES = ("persistence", "seasonal_naive", "rolling_mean")
 NEURAL = ("lstm", "transformer", "graph_full", "graph_shuffled", "graph_none")
+# Where outputs go. A PARTIAL run (--models, --epochs or one --track only) writes to scratch/ sub-folders
+# (git-ignored), so a quick experiment can never overwrite the complete, committed hand-off files.
+SCRATCH = {"on": False}
+
+
+def out_path(sub: str, name: str = ""):
+    """Output path in artifacts/ or predictions/, or in their scratch/ sub-folder during a partial run."""
+    folder = stage_path(STAGE, sub) / ("scratch" if SCRATCH["on"] else "")
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder / name if name else folder
+
+
 ARTIFACT_NAMES = {"lstm": "lstm_forecaster", "transformer": "transformer_forecaster", "graph_full": "graph_forecaster",
                   "graph_shuffled": "graph_shuffled", "graph_none": "graph_none"}
 
@@ -178,7 +191,7 @@ def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) ->
         t0 = time.time()
         xgb_bundle = train_xgb_lag(data, train_o, val_o, n_estimators=s["xgb_trees"], n_jobs=THREADS)
         forecasts["xgb_lag"] = {sp: predict_xgb_lag(xgb_bundle, data, o) for sp, o in (("val", val_o), ("test", test_o))}
-        joblib.dump(xgb_bundle, stage_path(STAGE, "artifacts", f"xgb_lag_{track}.joblib"), compress=3)
+        joblib.dump(xgb_bundle, out_path("artifacts", f"xgb_lag_{track}.joblib"), compress=3)
         info["xgb_lag"] = {"kind": "xgboost", "train_seconds": round(time.time() - t0, 1),
                            "best_iterations": {f"h{spec.horizons[h]}_{data.target_names[t]}": int(m.best_iteration)
                                                for (h, t), m in xgb_bundle["models"].items()}}
@@ -203,7 +216,7 @@ def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) ->
             info[name]["lanes_used"] = int(len(cfg["edges"]["src"]))
         prefix = "" if track == "sim" else "real_"
         info[name]["artifact"] = f"Stage02_DL/artifacts/{prefix}{ARTIFACT_NAMES[name]}.pt"
-        trained[name] = (model, stage_path(STAGE, "artifacts", f"{prefix}{ARTIFACT_NAMES[name]}.pt"), kind, cfg)
+        trained[name] = (model, out_path("artifacts", f"{prefix}{ARTIFACT_NAMES[name]}.pt"), kind, cfg)
 
     # Step 5: one split-conformal correction per model on VAL, then the long-format rows for val and test.
     frames = []
@@ -276,6 +289,9 @@ def main() -> int:
     stage_path(STAGE, "artifacts").mkdir(parents=True, exist_ok=True)
     if args.noise_channel:
         return noise_channel_check(args)
+    SCRATCH["on"] = bool(args.models or args.epochs or args.track != "both")
+    if SCRATCH["on"]:
+        print("PARTIAL RUN: outputs go to Stage02_DL/artifacts/scratch/ and predictions/scratch/ (not the hand-off files).")
 
     start = time.time()
     card = {"tracks": {}}
@@ -285,20 +301,20 @@ def main() -> int:
 
     # Step 6: write forecasts. The simulated track goes through the contract checker (it is a hand-over file).
     if outputs.get("sim") is not None:
-        path = stage_path(STAGE, "predictions", "dl_forecasts.csv.gz")
+        path = out_path("predictions", "dl_forecasts.csv.gz")
         write_validated_csv(outputs["sim"], "dl_forecasts", path)
         old = stage_path(STAGE, "predictions", "dl_forecasts.csv")
-        if old.exists():
+        if old.exists() and not SCRATCH["on"]:
             old.unlink()  # the v1 file is replaced; a stale copy next to the new one would confuse readers
         print(f"wrote {len(outputs['sim']):,} rows -> {path}")
     if outputs.get("real") is not None:
-        path = stage_path(STAGE, "predictions", "dl_real_forecasts.csv.gz")
+        path = out_path("predictions", "dl_real_forecasts.csv.gz")
         outputs["real"].to_csv(path, index=False)
         print(f"wrote {len(outputs['real']):,} rows -> {path}")
 
     # Step 7: training curves and the model card (val numbers only; Role 4 owns every test number).
     if curves:
-        pd.DataFrame(curves).to_csv(stage_path(STAGE, "artifacts", "training_curve.csv"), index=False)
+        pd.DataFrame(curves).to_csv(out_path("artifacts", "training_curve.csv"), index=False)
     sim_info = card["tracks"].get("sim", {}).get("models", {})
     proposal = None
     if sim_info:
@@ -306,7 +322,7 @@ def main() -> int:
         neural = {k: v["val_pinball_scaled"] for k, v in sim_info.items() if "val_pinball_scaled" in v}
         proposal = min(neural, key=neural.get) if neural else None
     save_model_card(
-        output_dir=stage_path(STAGE, "artifacts"), name="stage02_forecasters", version=MODEL_VERSION + ("-fast" if args.fast else ""),
+        output_dir=out_path("artifacts"), name="stage02_forecasters", version=MODEL_VERSION + ("-fast" if args.fast else ""),
         features=list(card["tracks"].get("sim", {}).get("input_channels", [])),
         train_window={"sim": "origins whose last target hour is before splits.json train_end",
                       "real": "origins whose last target day is before 2024-01-01"},
