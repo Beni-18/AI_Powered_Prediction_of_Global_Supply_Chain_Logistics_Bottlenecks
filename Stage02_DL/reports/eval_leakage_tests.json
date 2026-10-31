@@ -1,0 +1,12 @@
+{
+  "test_inputs_start_inside_test": true,
+  "val_inputs_inside_val": true,
+  "val_targets_before_val_end": true,
+  "targets_after_origin": true,
+  "no_train_split_rows_in_file": true,
+  "passed": true,
+  "y_true_matches_grid_and_models_aligned": true,
+  "errors": [],
+  "imputed_targets_excluded": 802,
+  "persistence_self_skill_is_zero": true
+}

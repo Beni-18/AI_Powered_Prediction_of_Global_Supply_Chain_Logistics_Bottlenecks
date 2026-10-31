@@ -28,6 +28,9 @@ data/raw/real/*
 !data/raw/real/.gitkeep
 
 # ---- training junk that should never be shared ----
+# partial / experimental Stage 2 runs (03_dl_engineer.py --models/--epochs/--track)
+Stage0*_*/artifacts/scratch/
+Stage0*_*/predictions/scratch/
 wandb/
 mlruns/
 runs/

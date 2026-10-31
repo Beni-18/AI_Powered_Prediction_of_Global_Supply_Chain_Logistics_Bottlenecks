@@ -68,6 +68,26 @@ Comment every logical step in plain English. Start by running git pull --rebase 
 
 ---
 
+## Day 2 (DL) addendum - paste AFTER your role's prompt
+
+Stage 2 was pre-built end to end by Role 4 at the team lead's request (decision 0011). Do not rebuild it. Review it, run it and finish your open items:
+
+```
+Stage 2 is already built. Before anything else read Stage02_DL/README.md (task board), docs/decisions/0011-stage02-forecasting-design.md
+and my hand-off note in Stage02_DL/HANDOFF/ (section "Your tasks"). Do NOT rewrite working code. Review it, run it, and do only the
+open tasks listed for my role, in priority order. Files first written by Role 4 in my lane are now mine: I may change them, and I take
+them over in my HANDOFF note. On macOS keep the line os.environ.setdefault("OMP_NUM_THREADS", "1") before importing torch/xgboost.
+```
+
+| Role | Your open Stage 2 work (details in your HANDOFF note) |
+|---|---|
+| 1 ML | follow **`docs/roles/ROLE_1_STAGE02_RUNBOOK.md`** (Antigravity prompt in its section 11): review, **full training run**, hyper-parameter study, `--fold k` backtest |
+| 2 EDA | **`02_eda_engineer.py` is yours, still a stub**: ACF/STL, ambiguous graphs, lead-lag edges, attribution, noise-channel test, attention maps |
+| 3 Data & Integration | review `01_*`, `05_*`, pages, `common/dataio/{hourly_grid,real_activity}.py`; clean-clone run; share results; deploy; latency |
+| 4 Evaluation | re-run `04_evaluation_engineer.py` after the full run; verify the C-DL claims; limitations and debate notes |
+
+---
+
 ## If your assistant ignores the rules
 
 1. Stop the session, start a new one, paste the prompt again.

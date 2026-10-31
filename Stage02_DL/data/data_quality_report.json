@@ -1,0 +1,89 @@
+{
+  "input_files": [
+    "data/raw/sim/node_hourly_raw.csv.gz",
+    "Stage01_ML/data/split_boundaries.json"
+  ],
+  "data_origin_note": "sim track = SYNTHETIC_CALIBRATED (simulator v0.3, real drivers); real track = REAL (PortWatch)",
+  "sim_track": {
+    "hours": 8760,
+    "nodes": 27,
+    "grid_rows": 236520,
+    "raw_rows": 234141,
+    "duplicate_raw_rows_dropped": 0,
+    "imputed_rows": 2379,
+    "filled_by_forward_fill_max_6h": 2379,
+    "filled_by_train_hour_of_week_median": 0,
+    "imputed_rows_by_split_period": {
+      "gap": 81,
+      "test": 316,
+      "train": 1698,
+      "val": 284
+    },
+    "rows_by_split_period": {
+      "train": 165888,
+      "test": 31023,
+      "val": 30537,
+      "gap": 9072
+    },
+    "values_clipped": 0
+  },
+  "network": {
+    "nodes": 27,
+    "lanes": 50,
+    "undirected_links": 50,
+    "directed_links": 62,
+    "isolated_nodes": []
+  },
+  "real_track": {
+    "status": "BUILT",
+    "source": "IMF PortWatch Daily_Ports_Data (portcalls_container) and Daily_Chokepoints_Data (n_container)",
+    "nodes": [
+      "PORT_CN_SHA",
+      "PORT_CN_NGB",
+      "PORT_CN_YTN",
+      "PORT_KR_PUS",
+      "PORT_SG_SIN",
+      "PORT_MY_PKG",
+      "PORT_LK_CMB",
+      "PORT_IN_NSA",
+      "PORT_IN_MAA",
+      "PORT_AE_JEA",
+      "PORT_NL_RTM",
+      "PORT_BE_ANR",
+      "PORT_DE_HAM",
+      "PORT_US_LAX",
+      "PORT_US_OAK",
+      "PORT_US_NYC",
+      "PORT_US_SAV",
+      "CHOKE_SUEZ",
+      "CHOKE_PANAMA",
+      "CHOKE_MALACCA",
+      "CHOKE_HORMUZ",
+      "CHOKE_BAB_EL_MANDEB",
+      "CHOKE_CAPE_GOOD_HOPE"
+    ],
+    "n_nodes": 23,
+    "nodes_without_real_data": [
+      "PORT_US_LGB",
+      "RAIL_US_CHI_BNSF",
+      "DC_US_MW_JOLIET",
+      "DC_EU_VENLO"
+    ],
+    "first_day": "2019-01-01",
+    "last_day": "2026-07-24",
+    "n_days": 2762,
+    "imputed_days": 0,
+    "imputed_longer_than_3_days_filled_with_median": 0,
+    "zero_activity_days": 1030,
+    "split": {
+      "train_end": "2024-01-01T00:00:00Z",
+      "val_start": "2024-01-08T00:00:00Z",
+      "val_end": "2025-01-01T00:00:00Z",
+      "test_start": "2025-01-08T00:00:00Z",
+      "purge_gap_hours": 168,
+      "first_day": "2019-01-01",
+      "last_day": "2026-07-24",
+      "rule": "a forecast window belongs to a split only if its inputs and targets sit fully inside that period"
+    }
+  }
+}

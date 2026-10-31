@@ -1,0 +1,10 @@
+{
+  "train_end": "2024-01-01T00:00:00Z",
+  "val_start": "2024-01-08T00:00:00Z",
+  "val_end": "2025-01-01T00:00:00Z",
+  "test_start": "2025-01-08T00:00:00Z",
+  "purge_gap_hours": 168,
+  "first_day": "2019-01-01",
+  "last_day": "2026-07-24",
+  "rule": "a forecast window belongs to a split only if its inputs and targets sit fully inside that period"
+}

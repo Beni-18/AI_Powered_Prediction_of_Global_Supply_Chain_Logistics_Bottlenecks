@@ -1,0 +1,9 @@
+{
+  "train_end": "2025-09-13T23:14:18Z",
+  "val_start": "2025-09-20T23:14:18Z",
+  "val_end": "2025-11-07T02:18:03Z",
+  "test_start": "2025-11-14T02:18:03Z",
+  "purge_gap_hours": 168,
+  "rule": "rows in [boundary, boundary+gap) are removed by the purge; count in data_quality_report.json",
+  "stage2_rule": "a forecast window is train only if its last TARGET hour is before train_end; val/test only if its FIRST INPUT hour is on/after val_start/test_start (common/dataio/windows.py). Long-context summaries may look further back: that is history a forecaster would really have, never a training target."
+}

@@ -31,6 +31,10 @@ pages = {
         st.Page("pages/1_Bottleneck_Scoring.py", title="Bottleneck scoring", url_path="scoring"),
         st.Page("pages/2_Model_Evidence.py", title="Model evidence", url_path="evidence"),
     ],
+    "Stage 2 · network forecasts": [
+        st.Page("pages/3_Network_Forecast.py", title="Network forecast", url_path="forecast"),
+        st.Page("pages/4_Forecast_Evidence.py", title="Forecast evidence", url_path="forecast-evidence"),
+    ],
 }
 st.sidebar.markdown("**CASCADE** control tower")
 st.sidebar.caption("Decision support only · every alert needs a planner's review")
