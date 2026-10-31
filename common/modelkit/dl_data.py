@@ -183,8 +183,12 @@ class ForecastData:
         return self.imputed[future].transpose(0, 2, 1).astype(bool)
 
 
-def sim_data_from_grid(grid: pd.DataFrame, node_ids: list, scaler: dict, noise_channels: bool = False) -> ForecastData:
-    """Build the hourly simulated-track ForecastData from hourly_node_telemetry.csv[.gz]."""
+def sim_data_from_grid(grid: pd.DataFrame, node_ids: list, scaler: dict, noise_channels: bool = False,
+                       spec: TrackSpec | None = None) -> ForecastData:
+    """Build the hourly simulated-track ForecastData from hourly_node_telemetry.csv[.gz].
+
+    `spec` allows overriding the default TrackSpec (e.g. for input_len ablation studies).
+    """
     df = grid.copy()
     df["hour_ts"] = pd.to_datetime(df["hour_ts"], utc=True)
     # The flag may arrive as True/False booleans or as "True"/"False" text, depending on how the CSV was read.
@@ -195,7 +199,8 @@ def sim_data_from_grid(grid: pd.DataFrame, node_ids: list, scaler: dict, noise_c
         raise ValueError("The hourly grid has gaps; run Stage02_DL/01_data_engineer.py first.")
     values = np.stack([wide[c][node_ids].to_numpy(dtype=np.float64) for c in CHANNELS], axis=-1)
     imputed = wide["is_imputed"][node_ids].to_numpy(dtype=bool)
-    return ForecastData(values, imputed, times, node_ids, SIM_TRACK, scaler, noise_channels)
+    track_spec = SIM_TRACK if spec is None else spec
+    return ForecastData(values, imputed, times, node_ids, track_spec, scaler, noise_channels)
 
 
 def real_data_from_grid(grid: pd.DataFrame, scaler: dict) -> ForecastData:

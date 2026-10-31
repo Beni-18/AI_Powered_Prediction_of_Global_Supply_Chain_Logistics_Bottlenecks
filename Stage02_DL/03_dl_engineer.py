@@ -36,7 +36,9 @@ import os
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import argparse  # noqa: E402
+import dataclasses  # noqa: E402
 import json  # noqa: E402
+import subprocess  # noqa: E402
 import sys  # noqa: E402
 import time  # noqa: E402
 from pathlib import Path  # noqa: E402
@@ -52,8 +54,8 @@ import torch  # noqa: E402
 from common.contracts import write_validated_csv  # noqa: E402
 from common.modelkit import save_model_card  # noqa: E402
 from common.modelkit.dl_data import (  # noqa: E402
-    ForecastData, real_data_from_grid, shuffle_permutation, sim_data_from_grid, split_origins, symmetric_adjacency,
-    transit_edges,
+    SIM_TRACK, ForecastData, real_data_from_grid, shuffle_permutation, sim_data_from_grid, split_origins,
+    symmetric_adjacency, transit_edges,
 )
 from common.modelkit.dl_models import build_model, count_parameters, save_model  # noqa: E402
 from common.modelkit.dl_train import (  # noqa: E402
@@ -85,6 +87,31 @@ ARTIFACT_NAMES = {"lstm": "lstm_forecaster", "transformer": "transformer_forecas
                   "graph_shuffled": "graph_shuffled", "graph_none": "graph_none"}
 
 
+def _get_git_commit() -> str:
+    """Return short commit SHA if in git repo, else 'unknown'."""
+    try:
+        out = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL, text=True)
+        return out.strip()
+    except Exception:
+        return "unknown"
+
+
+def log_hparam_row(row: dict) -> None:
+    """Append one row to Stage02_DL/artifacts/hparam_log.csv (creating with header if missing).
+
+    This file is kept outside scratch/ so hyper-parameter exploration on validation is preserved.
+    """
+    log_path = stage_path(STAGE, "artifacts", "hparam_log.csv")
+    cols = ["utc_time", "tag", "track", "model", "hidden", "input_len", "epochs_run",
+            "best_epoch", "val_pinball_common", "parameters", "train_seconds", "train_stride", "git_commit"]
+    df = pd.DataFrame([[row.get(c, "") for c in cols]], columns=cols)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    if not log_path.exists():
+        df.to_csv(log_path, index=False)
+    else:
+        df.to_csv(log_path, mode="a", header=False, index=False)
+
+
 def parse_args() -> argparse.Namespace:
     """Read the command-line options."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -93,12 +120,17 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--models", nargs="*", default=None, help="subset of models to train, e.g. lstm graph_full")
     ap.add_argument("--epochs", type=int, default=None, help="override the epoch limit")
     ap.add_argument("--noise-channel", action="store_true", help="Role 2's attribution sanity test (see RUN above)")
+    ap.add_argument("--hidden", type=int, default=None, help="override hidden dimension (default 64, or 32 in --fast)")
+    ap.add_argument("--input-len", type=int, default=None, help="override input window steps for sim track (default 72)")
+    ap.add_argument("--tag", type=str, default=None, help="experiment label for artifacts/hparam_log.csv")
+    ap.add_argument("--fold", type=int, choices=[1, 2, 3], default=None, help="rolling-origin backtest fold (1, 2, or 3)")
     return ap.parse_args()
 
 
-def settings(fast: bool, track: str, epochs: int | None) -> dict:
+def settings(fast: bool, track: str, epochs: int | None, hidden: int | None = None) -> dict:
     """Hyper-parameters per mode (role file: full = hidden 64, <= 30 epochs, patience 5; fast = hidden 32, 10 epochs)."""
-    s = {"hidden": 32 if fast else 64, "layers": 2, "epochs": 10 if fast else 30, "patience": 3 if fast else 5,
+    h_dim = hidden if hidden is not None else (32 if fast else 64)
+    s = {"hidden": h_dim, "layers": 2, "epochs": 10 if fast else 30, "patience": 3 if fast else 5,
          "lr": 1e-3, "batch_origins": 16, "xgb_trees": 300 if fast else 600,
          # Hourly track: use every 6th (fast) or 2nd (full) training hour as an origin; neighbouring hours are
          # almost identical windows, so this loses little and makes an epoch 2-6x faster. Daily track: every day.
@@ -108,15 +140,17 @@ def settings(fast: bool, track: str, epochs: int | None) -> dict:
     return s
 
 
-def load_track(track: str, noise: bool = False) -> tuple:
+def load_track(track: str, noise: bool = False, input_len: int | None = None,
+               custom_scaler: dict | None = None) -> tuple:
     """Return (ForecastData, split boundaries, lane table) for the simulated or the real track (None if missing)."""
     edges = pd.read_csv(EDGES_CSV)
     node_ids = pd.read_csv(NODES_CSV)["node_id"].tolist()
     if track == "sim":
         grid = pd.read_csv(stage_path(STAGE, "data", "hourly_node_telemetry.csv.gz"))
-        scaler = json.loads(stage_path(STAGE, "data", "scaler.json").read_text())
+        scaler = custom_scaler if custom_scaler is not None else json.loads(stage_path(STAGE, "data", "scaler.json").read_text())
         bounds = json.loads(stage_path(STAGE, "data", "splits.json").read_text())
-        return sim_data_from_grid(grid, node_ids, scaler, noise_channels=noise), bounds, edges
+        spec = dataclasses.replace(SIM_TRACK, input_len=input_len) if input_len is not None else SIM_TRACK
+        return sim_data_from_grid(grid, node_ids, scaler, noise_channels=noise, spec=spec), bounds, edges
     path = stage_path(STAGE, "data", "real_daily_activity.csv.gz")
     if not path.exists():
         return None, None, edges
@@ -152,12 +186,12 @@ def to_reported_units(data: ForecastData, q_scaled: np.ndarray) -> np.ndarray:
 
 def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) -> pd.DataFrame | None:
     """Train every requested model on one track and return its val+test forecasts as one long DataFrame."""
-    data, bounds, edges = load_track(track)
+    data, bounds, edges = load_track(track, input_len=args.input_len if track == "sim" else None)
     if data is None:
         print(f"[{track}] skipped: no prepared data (run 01_data_engineer.py after scripts/fetch_real_data.py)")
         card["tracks"][track] = {"status": "SKIPPED: real_daily_activity.csv.gz not found"}
         return None
-    s = settings(args.fast, track, args.epochs)
+    s = settings(args.fast, track, args.epochs, hidden=args.hidden)
     spec = data.spec
     wanted = args.models or list(BASELINES) + ["xgb_lag"] + list(NEURAL)
     print(f"\n=== {track} track: {data.n_nodes} nodes, {len(data.times)} steps of {spec.step_hours} h, "
@@ -212,6 +246,31 @@ def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) ->
         info[name] = {"kind": kind, "parameters": count_parameters(model), "train_seconds": round(time.time() - t0, 1),
                       "epochs_run": len(curve), "best_epoch": curve[-1]["best_epoch"] if curve else None,
                       "val_pinball_scaled": round(val_pinball(model, data, val_o), 5)}
+
+        # Fair comparison origin set: evaluate on validation origins valid for 168h window (Runbook §5.1)
+        common_spec = dataclasses.replace(SIM_TRACK, input_len=168) if track == "sim" else spec
+        common_val_o = split_origins(data.times, common_spec, bounds, origin_hours=SIM_EVAL_HOURS if track == "sim" else None)["val"]
+        val_pb_common = round(val_pinball(model, data, common_val_o), 5)
+        info[name]["val_pinball_common"] = val_pb_common
+
+        if args.tag or args.hidden or args.input_len:
+            # Append hyperparameter evaluation metrics on the common validation origin set to hparam_log.csv.
+            log_hparam_row({
+                "utc_time": pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "tag": args.tag or "",
+                "track": track,
+                "model": name,
+                "hidden": s["hidden"],
+                "input_len": spec.input_len,
+                "epochs_run": len(curve),
+                "best_epoch": curve[-1]["best_epoch"] if curve else None,
+                "val_pinball_common": val_pb_common,
+                "parameters": count_parameters(model),
+                "train_seconds": info[name]["train_seconds"],
+                "train_stride": s["train_stride"],
+                "git_commit": _get_git_commit(),
+            })
+
         if kind == "graph":
             info[name]["lanes_used"] = int(len(cfg["edges"]["src"]))
         prefix = "" if track == "sim" else "real_"
@@ -281,6 +340,97 @@ def noise_channel_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_fold(fold_k: int, args: argparse.Namespace) -> int:
+    """Rolling-origin backtest fold for Role 4 (Section 7 in runbook).
+
+    Trains models on historical train data prior to cutoff C_k, evaluates point forecasts on a 21-day
+    purge-isolated validation window, and writes rows to Stage02_DL/predictions/dl_backtest_folds.csv.gz.
+    """
+    from common.dataio.hourly_grid import fit_robust_scaler
+
+    print(f"\n=== Rolling-origin backtest: Fold {fold_k} (sim track) ===")
+    cutoffs = {1: "2025-06-01T00:00:00Z", 2: "2025-07-01T00:00:00Z", 3: "2025-08-01T00:00:00Z"}
+    c_str = cutoffs[fold_k]
+    c_ts = pd.Timestamp(c_str)
+
+    # 1. Fold boundaries: purge gap of 168 h after train_end, followed by 21 days of validation.
+    val_start_ts = c_ts + pd.Timedelta(hours=168)
+    val_end_ts = val_start_ts + pd.Timedelta(days=21)
+    fold_bounds = {
+        "train_end": c_str,
+        "val_start": val_start_ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "val_end": val_end_ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "test_start": "2099-01-01T00:00:00Z",
+    }
+
+    # 2. Refit scaler strictly on data prior to cutoff C_k so no statistics leak from later dates.
+    grid = pd.read_csv(stage_path(STAGE, "data", "hourly_node_telemetry.csv.gz"))
+    fold_scaler = fit_robust_scaler(grid, c_ts)
+
+    node_ids = pd.read_csv(NODES_CSV)["node_id"].tolist()
+    edges = pd.read_csv(EDGES_CSV)
+    data = sim_data_from_grid(grid, node_ids, fold_scaler)
+    spec = data.spec
+
+    # 3. Fast settings per runbook: patience 3, stride 6, trees 300
+    s = settings(True, "sim", args.epochs, hidden=args.hidden)
+    all_origins = split_origins(data.times, spec, fold_bounds)
+    train_o = all_origins["train"][::s["train_stride"]]
+    val_o = split_origins(data.times, spec, fold_bounds, origin_hours=SIM_EVAL_HOURS)["val"]
+    print(f"Fold {fold_k}: train origins {len(train_o)} (stride {s['train_stride']}), val origins {len(val_o)}")
+
+    frames = []
+
+    # Baselines: residual band from train, predict on fold-val origins
+    train_dense = all_origins["train"][::max(1, s["train_stride"])]
+    y_train = data.batch(train_dense)["y"]
+    mask_train = ~data.target_imputed(train_dense)
+    for name in ("persistence", "seasonal_naive"):
+        band = residual_quantiles(naive_point(data, train_dense, name), y_train, mask_train)
+        q_raw = with_residual_band(naive_point(data, val_o, name), band)
+        q = to_reported_units(data, q_raw)
+        df = long_frame(data, val_o, q, "val", name, "v2.0-fold-fast")
+        df["fold"] = fold_k
+        frames.append(df)
+
+    # XGBoost on lag features
+    print(f"training xgb_lag for fold {fold_k} ...")
+    xgb_bundle = train_xgb_lag(data, train_o, val_o, n_estimators=s["xgb_trees"], n_jobs=THREADS)
+    q_raw = predict_xgb_lag(xgb_bundle, data, val_o)
+    q = to_reported_units(data, q_raw)
+    df = long_frame(data, val_o, q, "val", "xgb_lag", "v2.0-fold-fast")
+    df["fold"] = fold_k
+    frames.append(df)
+
+    # Neural models: early stop on fold-val origins, no conformal widening (eval uses point forecast)
+    neural_models = ("lstm", "transformer", "graph_full", "graph_none")
+    for name in neural_models:
+        set_global_seed(SEED)
+        kind, cfg = model_config(name, data, edges, s)
+        model = build_model(kind, cfg)
+        print(f"training {name} for fold {fold_k} ({count_parameters(model):,} parameters) ...")
+        model, _ = train_neural(model, data, train_o, val_o, epochs=s["epochs"],
+                                batch_size=s["batch_origins"], lr=s["lr"], patience=s["patience"])
+        q_raw = predict_scaled(model, data, val_o)
+        q = to_reported_units(data, q_raw)
+        df = long_frame(data, val_o, q, "val", name, "v2.0-fold-fast")
+        df["fold"] = fold_k
+        frames.append(df)
+
+    # Combine fold forecasts and append/merge into dl_backtest_folds.csv.gz
+    fold_df = pd.concat(frames, ignore_index=True)
+    out_file = stage_path(STAGE, "predictions", "dl_backtest_folds.csv.gz")
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    if out_file.exists():
+        existing = pd.read_csv(out_file)
+        combined = pd.concat([existing[existing["fold"] != fold_k], fold_df], ignore_index=True)
+    else:
+        combined = fold_df
+    combined.to_csv(out_file, index=False, compression="gzip")
+    print(f"Wrote {len(fold_df):,} rows for fold {fold_k} (total: {len(combined):,}) -> {out_file}")
+    return 0
+
+
 def main() -> int:
     """Train, forecast, validate and save everything for Stage 2."""
     args = parse_args()
@@ -289,7 +439,9 @@ def main() -> int:
     stage_path(STAGE, "artifacts").mkdir(parents=True, exist_ok=True)
     if args.noise_channel:
         return noise_channel_check(args)
-    SCRATCH["on"] = bool(args.models or args.epochs or args.track != "both")
+    if args.fold is not None:
+        return run_fold(args.fold, args)
+    SCRATCH["on"] = bool(args.models or args.epochs or args.track != "both" or args.hidden or args.input_len or args.tag)
     if SCRATCH["on"]:
         print("PARTIAL RUN: outputs go to Stage02_DL/artifacts/scratch/ and predictions/scratch/ (not the hand-off files).")
 

@@ -127,3 +127,30 @@ def test_conformal_margins_reach_the_target_coverage():
     q2 = apply_margins(q, m)
     coverage = ((y >= q2[..., 0]) & (y <= q2[..., 2])).mean()
     assert coverage == pytest.approx(0.80, abs=0.02)
+
+
+def test_common_origin_set_is_same_for_various_input_lengths():
+    """Origins valid for input_len=168 are also valid for 48 and 72 h and preserve timestamp alignment."""
+    import dataclasses
+
+    times = pd.date_range("2025-01-01", periods=24 * 120, freq="h", tz="UTC")
+    bounds = {
+        "train_end": "2025-01-25T00:00:00Z",
+        "val_start": "2025-02-01T00:00:00Z",
+        "val_end": "2025-03-15T00:00:00Z",
+        "test_start": "2025-03-22T00:00:00Z",
+    }
+    origin_hours = (0, 6, 12, 18)
+
+    # Reference origin set: computed with the longest input window (168 h)
+    longest_spec = dataclasses.replace(SIM_TRACK, input_len=168)
+    common_val = split_origins(times, longest_spec, bounds, origin_hours=origin_hours)["val"]
+
+    # Every origin in common_val must have enough history for 48, 72, and 168 hours
+    assert len(common_val) > 0
+    for length in (48, 72, 168):
+        spec = dataclasses.replace(SIM_TRACK, input_len=length)
+        assert np.all(common_val - length + 1 >= 0)
+        val_origins_for_length = split_origins(times, spec, bounds, origin_hours=origin_hours)["val"]
+        assert set(common_val).issubset(set(val_origins_for_length))
+
