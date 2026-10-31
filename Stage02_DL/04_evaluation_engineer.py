@@ -32,9 +32,15 @@ HOW TO RUN
     python Stage02_DL/04_evaluation_engineer.py --out-dir /tmp/e2       (dry run: no ledger)
 """
 
+import os
+import sys
+
+# PyTorch and XGBoost each bring their own OpenMP library. On macOS the two deadlock in one process unless OpenMP
+# itself is limited to one thread. Keep this setting before importing packages that load OpenMP.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
 import argparse
 import json
-import sys
 from pathlib import Path
 
 # Make "import common" work when this file is run from inside the stage folder.
