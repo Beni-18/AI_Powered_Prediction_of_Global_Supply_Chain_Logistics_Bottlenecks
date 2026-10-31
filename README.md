@@ -19,12 +19,14 @@ for 7 days across a trade network (DL), **reads** carrier and customs advisories
 
 ## Team and roles
 
-| # | Role | Scripts (all five stages) | Commit type | Role file |
-|---|---|---|---|---|
-| 1 | ML Engineer (model role) | `03_*` | `ml` | [ROLE_1_ML_ENGINEER](docs/roles/ROLE_1_ML_ENGINEER.md) |
-| 2 | EDA Engineer (also prompt/workflow) | `02_*` | `eda` | [ROLE_2_EDA_ENGINEER](docs/roles/ROLE_2_EDA_ENGINEER.md) |
-| 3 | Data & Integration Engineer | `01_*`, `05_*`, app, repo | `data`, `integ` | [ROLE_3_DATA_INTEGRATION_ENGINEER](docs/roles/ROLE_3_DATA_INTEGRATION_ENGINEER.md) |
-| 4 | Evaluation Engineer | `04_*`, claims ledger | `eval` | [ROLE_4_EVALUATION_ENGINEER](docs/roles/ROLE_4_EVALUATION_ENGINEER.md) |
+**Live app (Streamlit):** https://aipoweredpredictionofglobalsupplychainlogisticsbottlenecks-fut.streamlit.app/
+
+| # | Member | Role | Scripts (all five stages) | Commit type | Role file |
+|---|---|---|---|---|---|
+| 1 | [Santhosh K](https://github.com/SANTHOSH-K06) | ML Engineer (model role) | `03_*` | `ml` | [ROLE_1_ML_ENGINEER](docs/roles/ROLE_1_ML_ENGINEER.md) |
+| 2 | [Isha Miruthika](https://github.com/ishamiruthika23) | EDA Engineer (also prompt/workflow) | `02_*` | `eda` | [ROLE_2_EDA_ENGINEER](docs/roles/ROLE_2_EDA_ENGINEER.md) |
+| 3 | [Pravin Lenin Naidu](https://github.com/Pravin292) | Data & Integration Engineer | `01_*`, `05_*`, app, repo | `data`, `integ` | [ROLE_3_DATA_INTEGRATION_ENGINEER](docs/roles/ROLE_3_DATA_INTEGRATION_ENGINEER.md) |
+| 4 | [Bennish Christopher](https://github.com/Beni-18) | Evaluation Engineer | `04_*`, claims ledger | `eval` | [ROLE_4_EVALUATION_ENGINEER](docs/roles/ROLE_4_EVALUATION_ENGINEER.md) |
 
 ## Five-day plan
 
@@ -88,5 +90,16 @@ streamlit run app.py                                        # control tower (bui
 
 ## Status
 
-Foundation committed: contracts, node registry (27 nodes, 50 lanes), schemas, fixtures, hooks, CI, role files.
-Stage scripts are stubs that exit with code 3 ("not implemented") until each role replaces them. Live status: `python scripts/board.py`.
+Live status per role and stage: `python scripts/board.py`.
+
+| Stage | State |
+|---|---|
+| 1 ML | **Complete.** Data, EDA, models, evaluation, API and dashboard are handed over; 15 claims verified from a fresh clone (`claims/CLAIMS_LEDGER.md`) |
+| 2 DL | Models handed over (Role 1); data, EDA, evaluation and integration not started |
+| 3 NLP, 4 SLM, 5 GenAI | Not started: scripts are stubs that exit with code 3 ("not implemented") |
+
+**Stage 1 result** (test period, `Stage01_ML/reports/eval_metrics.json`): logistic regression at an alert threshold of 0.39 catches 77.3% of critical delays with 40.1 false alarms per 100 alerts (soft budget 40), at a cost of 0.337 per shipment. The dashboard can switch between the five trained models.
+
+**About the data:** the simulator is driven by real weather, port traffic, port size and supply-chain pressure data (`data/raw/sim/SIM_CARD.md`, decision 0010), but shipment outcomes are still simulated, so every row is labelled `SYNTHETIC_CALIBRATED`.
+
+**Still open for Stage 1:** votes on decisions 0008 and 0009; Role 2's field-guide rewrite and `eda_error_slices.csv`; pinning library versions in `requirements.txt` (exact numbers depend on them; see `docs/KNOWN_LIMITATIONS.md`).
