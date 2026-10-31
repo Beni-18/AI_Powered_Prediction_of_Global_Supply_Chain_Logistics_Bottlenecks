@@ -81,7 +81,7 @@ them over in my HANDOFF note. On macOS keep the line os.environ.setdefault("OMP_
 
 | Role | Your open Stage 2 work (details in your HANDOFF note) |
 |---|---|
-| 1 ML | review `common/modelkit/dl_*.py` + `03_dl_engineer.py`; **full training run**; hyper-parameter study; `--fold k` backtest |
+| 1 ML | follow **`docs/roles/ROLE_1_STAGE02_RUNBOOK.md`** (Antigravity prompt in its section 11): review, **full training run**, hyper-parameter study, `--fold k` backtest |
 | 2 EDA | **`02_eda_engineer.py` is yours, still a stub**: ACF/STL, ambiguous graphs, lead-lag edges, attribution, noise-channel test, attention maps |
 | 3 Data & Integration | review `01_*`, `05_*`, pages, `common/dataio/{hourly_grid,real_activity}.py`; clean-clone run; share results; deploy; latency |
 | 4 Evaluation | re-run `04_evaluation_engineer.py` after the full run; verify the C-DL claims; limitations and debate notes |

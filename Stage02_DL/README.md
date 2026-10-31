@@ -11,7 +11,8 @@ pip install -r requirements.txt -r requirements-dev.txt -r Stage02_DL/requiremen
 python scripts/fetch_real_data.py            # once: PortWatch daily data for the real track (~10 min download, git-ignored)
 cd Stage02_DL
 python 01_data_engineer.py                   # ~10 s: hourly grid, splits, scaler, network, real track
-python 03_dl_engineer.py --fast              # ~15 min CPU (hidden 32, <= 10 epochs). Full run: drop --fast (hidden 64, <= 30 epochs, ~1.5-2.5 h)
+python 03_dl_engineer.py --fast              # ~11 min CPU (hidden 32, <= 10 epochs). Full run: drop --fast (hidden 64, <= 30 epochs, a few hours)
+                                             # --models / --epochs / --track = partial run -> artifacts/scratch, predictions/scratch only
 python 04_evaluation_engineer.py             # ~1 min: every eval_* file + claims ledger rows
 python 05_integration_engineer.py            # API latency -> reports/integ_latency.json
 uvicorn 05_integration_engineer:app --port 8002     # the forecast API
@@ -45,7 +46,7 @@ On macOS, PyTorch and XGBoost clash over OpenMP in one process. The scripts and 
 4. [SHOULD] Document the chokepoint "throughput" conversion in your HANDOFF (schema note); add a "Visual benchmark" panel polish; pin library versions.
 5. [STRETCH] Animated propagation replay along the lanes for one test episode.
 
-**Role 1 - ML (Santhosh)**
+**Role 1 - ML (Santhosh)** - full step-by-step runbook (also for Antigravity): [docs/roles/ROLE_1_STAGE02_RUNBOOK.md](../docs/roles/ROLE_1_STAGE02_RUNBOOK.md)
 1. [MUST] Review `common/modelkit/dl_*.py` and `03_dl_engineer.py`; run the full mode; set your HANDOFF READY.
 2. [SHOULD] Hyper-parameter study (hidden 32/64/128, window 48/72/168) logged to `artifacts/hparam_log.csv`.
 3. [SHOULD] Rolling-origin backtest: a `--fold k` option (3 expanding folds) so Role 4 can report skill mean +- spread.
