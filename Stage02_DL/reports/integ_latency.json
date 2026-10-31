@@ -1,0 +1,27 @@
+{
+  "calls_per_model": 200,
+  "date": "2026-10-31",
+  "models": {
+    "lstm": {
+      "p50_ms": 4.55,
+      "p95_ms": 4.75
+    },
+    "transformer": {
+      "p50_ms": 3.08,
+      "p95_ms": 3.25
+    },
+    "graph_full": {
+      "p50_ms": 19.64,
+      "p95_ms": 20.97
+    },
+    "graph_shuffled": {
+      "p50_ms": 19.57,
+      "p95_ms": 20.53
+    },
+    "graph_none": {
+      "p50_ms": 19.43,
+      "p95_ms": 20.25
+    }
+  },
+  "method": "direct Service.run calls (no HTTP: starlette's test client needs httpx2, not installed here)"
+}

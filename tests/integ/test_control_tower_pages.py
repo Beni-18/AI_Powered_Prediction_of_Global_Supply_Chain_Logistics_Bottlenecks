@@ -16,7 +16,8 @@ pytest.importorskip("plotly")
 pytest.importorskip("xgboost")
 pytestmark = pytest.mark.skipif(not stage_path(1, "artifacts", "stage01_models.joblib").exists(), reason="Stage 1 model not present")
 
-PAGES = ["app.py", "pages/overview.py", "pages/1_Bottleneck_Scoring.py", "pages/2_Model_Evidence.py"]
+PAGES = ["app.py", "pages/overview.py", "pages/1_Bottleneck_Scoring.py", "pages/2_Model_Evidence.py",
+         "pages/3_Network_Forecast.py", "pages/4_Forecast_Evidence.py"]
 SCRIPT = """
 import sys
 from streamlit.testing.v1 import AppTest
