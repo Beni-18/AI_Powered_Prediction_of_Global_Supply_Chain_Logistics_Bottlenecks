@@ -1,0 +1,456 @@
+{
+  "champion": {
+    "model": "transformer",
+    "chosen_on": "validation: skill vs persistence for dwell at 24 h, then episode recall",
+    "val_skill_dwell_24h": 0.1797,
+    "best_baseline_on_val": "xgb_lag",
+    "best_baseline_val_skill_dwell_24h": 0.1463,
+    "beats_best_baseline_on_val": true,
+    "alert_rule": {
+      "A": "alert when any horizon's median dwell forecast >= node threshold",
+      "B": "alert when max P(dwell >= threshold) >= 0.70 (p* chosen on validation by cost)",
+      "p_star": 0.7,
+      "thresholds_file": "Stage02_DL/reports/eval_alert_thresholds.csv",
+      "operating_rule": "B_prob_ge_0.70",
+      "operating_rule_chosen_on": "validation warning cost (10 per missed episode + 1 per false alarm)"
+    },
+    "model_version": "v2.0-fast"
+  },
+  "headline": {
+    "skill_dwell_24h": "0.168 [0.147, 0.189]",
+    "skill_dwell_168h": "0.216 [0.191, 0.241]",
+    "positive_skill_horizons": "5/5 dwell, 5/5 throughput",
+    "skill_vs_best_baseline_dwell_24h": "0.048 [0.035, 0.063] vs xgb_lag",
+    "episode_recall": "0.69 [0.42, 0.87] (n = 13)",
+    "median_lead_h": "32 [10, 89]",
+    "alert_rule_chosen_on_val": "B_prob_ge_0.70",
+    "warning_cost_test": "transformer 49 vs lstm 54, xgb_lag 98, persistence 92, stage1_risk 401",
+    "false_alarms_per_node_week": "0.06",
+    "coverage_dwell": "0.798",
+    "ablation_vs_none": "better in 0/10, worse in 3",
+    "ablation_vs_shuffled": "better in 0/10, worse in 6",
+    "real_positive_skill": "transformer 3/3 horizons (CI above 0)",
+    "real_skill": "24 h: 0.253 [0.235, 0.270]; 72 h: 0.257 [0.241, 0.272]; 168 h: 0.215 [0.200, 0.230]",
+    "real_skill_vs_best_baseline": "24 h: 0.033 [0.021, 0.046]; 72 h: 0.017 [-0.005, 0.040]; 168 h: 0.035 [0.023, 0.049]"
+  },
+  "trust": {
+    "passed": true
+  },
+  "diebold_mariano": {
+    "transformer_vs_persistence_dwell_24h": {
+      "mean_diff": -0.8096699767928908,
+      "dm_stat": -13.488920252730237,
+      "p_value": 1.8174266993946507e-41,
+      "n": 151
+    },
+    "transformer_vs_persistence_dwell_168h": {
+      "mean_diff": -1.6612410399803779,
+      "dm_stat": -9.43579826501102,
+      "p_value": 3.8802823242441255e-21,
+      "n": 151
+    },
+    "transformer_vs_xgb_lag_dwell_24h": {
+      "mean_diff": -0.2039274873115601,
+      "dm_stat": -6.392564932122421,
+      "p_value": 1.631259177564663e-10,
+      "n": 151
+    },
+    "transformer_vs_xgb_lag_dwell_168h": {
+      "mean_diff": -0.12833896907605521,
+      "dm_stat": -1.1832151587634698,
+      "p_value": 0.23672388676289302,
+      "n": 151
+    },
+    "transformer_vs_graph_none_dwell_24h": {
+      "mean_diff": -0.22316782890888856,
+      "dm_stat": -8.645353788461062,
+      "p_value": 5.363884234430861e-18,
+      "n": 151
+    },
+    "transformer_vs_graph_none_dwell_168h": {
+      "mean_diff": -0.28170213354465024,
+      "dm_stat": -2.385332475734508,
+      "p_value": 0.017063692080254857,
+      "n": 151
+    },
+    "transformer_vs_lstm_dwell_24h": {
+      "mean_diff": -0.12160440293579367,
+      "dm_stat": -5.232372737734146,
+      "p_value": 1.6734786521491255e-07,
+      "n": 151
+    },
+    "transformer_vs_lstm_dwell_168h": {
+      "mean_diff": 0.03695346767042125,
+      "dm_stat": 0.41776854328786994,
+      "p_value": 0.6761163521576398,
+      "n": 151
+    }
+  },
+  "p_star_by_model": {
+    "graph_full": 0.4,
+    "graph_none": 0.6,
+    "graph_shuffled": 0.55,
+    "lstm": 0.55,
+    "persistence": 0.9,
+    "rolling_mean": 0.65,
+    "seasonal_naive": 0.9,
+    "transformer": 0.7,
+    "xgb_lag": 0.75
+  },
+  "episode_threshold": "node p95 of TRAIN dwell",
+  "lookback_h": 168,
+  "n_test_episodes_eligible": 13,
+  "graph_ablation": {
+    "vs_none": {
+      "available": true,
+      "cells": 10,
+      "graph_full_better": 0,
+      "graph_full_worse": 3,
+      "no_clear_difference": 7
+    },
+    "vs_shuffled": {
+      "available": true,
+      "cells": 10,
+      "graph_full_better": 0,
+      "graph_full_worse": 6,
+      "no_clear_difference": 4
+    }
+  },
+  "positive_skill_horizons_by_model": {
+    "graph_full|dwell": 5,
+    "graph_full|throughput": 5,
+    "graph_none|dwell": 5,
+    "graph_none|throughput": 5,
+    "graph_shuffled|dwell": 5,
+    "graph_shuffled|throughput": 5,
+    "lstm|dwell": 5,
+    "lstm|throughput": 5,
+    "persistence|dwell": 0,
+    "persistence|throughput": 0,
+    "rolling_mean|dwell": 3,
+    "rolling_mean|throughput": 5,
+    "seasonal_naive|dwell": 0,
+    "seasonal_naive|throughput": 0,
+    "transformer|dwell": 5,
+    "transformer|throughput": 5,
+    "xgb_lag|dwell": 5,
+    "xgb_lag|throughput": 5
+  },
+  "real_track": {
+    "errors": [],
+    "n_test_forecasts": 36501,
+    "test_period": [
+      "2025-02-04 00:00:00+00:00",
+      "2026-07-17 00:00:00+00:00"
+    ],
+    "horizons_with_ci_positive_skill": {
+      "graph_full": 3,
+      "graph_none": 3,
+      "graph_shuffled": 3,
+      "lstm": 3,
+      "persistence": 0,
+      "rolling_mean": 3,
+      "seasonal_naive": 2,
+      "transformer": 3,
+      "xgb_lag": 3
+    },
+    "n_horizons": 3,
+    "skill_test": {
+      "graph_full|h24": [
+        0.2095,
+        0.1906,
+        0.2276
+      ],
+      "graph_none|h24": [
+        0.2234,
+        0.2057,
+        0.2404
+      ],
+      "graph_shuffled|h24": [
+        0.214,
+        0.1955,
+        0.231
+      ],
+      "lstm|h24": [
+        0.1753,
+        0.1566,
+        0.1931
+      ],
+      "persistence|h24": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rolling_mean|h24": [
+        0.2181,
+        0.2008,
+        0.2336
+      ],
+      "seasonal_naive|h24": [
+        0.0327,
+        0.0129,
+        0.0518
+      ],
+      "transformer|h24": [
+        0.2528,
+        0.2349,
+        0.2702
+      ],
+      "xgb_lag|h24": [
+        0.2271,
+        0.212,
+        0.2414
+      ],
+      "graph_full|h72": [
+        0.2184,
+        0.198,
+        0.2354
+      ],
+      "graph_none|h72": [
+        0.2356,
+        0.2191,
+        0.2504
+      ],
+      "graph_shuffled|h72": [
+        0.225,
+        0.2075,
+        0.2409
+      ],
+      "lstm|h72": [
+        0.1898,
+        0.1709,
+        0.2064
+      ],
+      "persistence|h72": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rolling_mean|h72": [
+        0.2445,
+        0.2312,
+        0.2575
+      ],
+      "seasonal_naive|h72": [
+        0.0605,
+        0.0377,
+        0.0813
+      ],
+      "transformer|h72": [
+        0.2571,
+        0.241,
+        0.2724
+      ],
+      "xgb_lag|h72": [
+        0.1841,
+        0.1695,
+        0.1973
+      ],
+      "graph_full|h168": [
+        0.1749,
+        0.1571,
+        0.1919
+      ],
+      "graph_none|h168": [
+        0.1858,
+        0.1714,
+        0.1994
+      ],
+      "graph_shuffled|h168": [
+        0.1805,
+        0.1654,
+        0.1949
+      ],
+      "lstm|h168": [
+        0.1523,
+        0.1354,
+        0.1681
+      ],
+      "persistence|h168": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rolling_mean|h168": [
+        0.1958,
+        0.1806,
+        0.2106
+      ],
+      "seasonal_naive|h168": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "transformer|h168": [
+        0.2152,
+        0.2,
+        0.2298
+      ],
+      "xgb_lag|h168": [
+        0.1865,
+        0.1731,
+        0.1991
+      ]
+    },
+    "skill_vs_best_test": {
+      "graph_full|h24": [
+        -0.0228,
+        -0.0374,
+        -0.0103
+      ],
+      "graph_none|h24": [
+        -0.0048,
+        -0.0172,
+        0.0065
+      ],
+      "graph_shuffled|h24": [
+        -0.0169,
+        -0.0298,
+        -0.0057
+      ],
+      "lstm|h24": [
+        -0.067,
+        -0.0783,
+        -0.0561
+      ],
+      "persistence|h24": [
+        -0.2938,
+        -0.3181,
+        -0.2691
+      ],
+      "rolling_mean|h24": [
+        -0.0117,
+        -0.032,
+        0.008
+      ],
+      "seasonal_naive|h24": [
+        -0.2515,
+        -0.273,
+        -0.231
+      ],
+      "transformer|h24": [
+        0.0332,
+        0.0212,
+        0.0456
+      ],
+      "xgb_lag|h24": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "graph_full|h72": [
+        -0.0345,
+        -0.0627,
+        -0.0097
+      ],
+      "graph_none|h72": [
+        -0.0117,
+        -0.0353,
+        0.0103
+      ],
+      "graph_shuffled|h72": [
+        -0.0258,
+        -0.0503,
+        -0.003
+      ],
+      "lstm|h72": [
+        -0.0723,
+        -0.0977,
+        -0.0487
+      ],
+      "persistence|h72": [
+        -0.3236,
+        -0.3468,
+        -0.3008
+      ],
+      "rolling_mean|h72": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "seasonal_naive|h72": [
+        -0.2434,
+        -0.2664,
+        -0.2206
+      ],
+      "transformer|h72": [
+        0.0168,
+        -0.0054,
+        0.0395
+      ],
+      "xgb_lag|h72": [
+        -0.0799,
+        -0.1008,
+        -0.0595
+      ],
+      "graph_full|h168": [
+        -0.0143,
+        -0.0286,
+        -0.0008
+      ],
+      "graph_none|h168": [
+        -0.0008,
+        -0.0117,
+        0.0109
+      ],
+      "graph_shuffled|h168": [
+        -0.0073,
+        -0.018,
+        0.0044
+      ],
+      "lstm|h168": [
+        -0.042,
+        -0.055,
+        -0.0283
+      ],
+      "persistence|h168": [
+        -0.2293,
+        -0.2486,
+        -0.2094
+      ],
+      "rolling_mean|h168": [
+        0.0114,
+        -0.0078,
+        0.0305
+      ],
+      "seasonal_naive|h168": [
+        -0.2293,
+        -0.2486,
+        -0.2094
+      ],
+      "transformer|h168": [
+        0.0353,
+        0.0232,
+        0.0485
+      ],
+      "xgb_lag|h168": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "ablation_vs_none": {
+      "available": true,
+      "cells": 3,
+      "graph_full_better": 0,
+      "graph_full_worse": 3,
+      "no_clear_difference": 0
+    },
+    "ablation_vs_shuffled": {
+      "available": true,
+      "cells": 3,
+      "graph_full_better": 0,
+      "graph_full_worse": 3,
+      "no_clear_difference": 0
+    }
+  },
+  "honest_notes": [
+    "- The champion was picked on validation; its test skill is reported as is, even where it is not significant.",
+    "- **Recall alone is not a fair score.** With rule A even persistence catches 12/13 test episodes (noisy readings crossing the line), at 71 false alarms. Compare models on the warning cost of their validation-chosen rule: transformer 49 vs lstm 54, xgb_lag 98, persistence 92, stage1_risk 401.",
+    "- **The graph does not clearly help** on the simulated track: graph_full vs graph_none better in 0/10, worse in 3, vs graph_shuffled better in 0/10, worse in 6 (target x horizon cells, paired 95% CI). That is a finding, not a failure.",
+    "- The graph does not help on the REAL track either (eval_real_graph_ablation.csv).",
+    "- These numbers come from the --fast training run (hidden 32, <= 10 epochs); claims stay PENDING until the full run.",
+    "- Data are simulated (SYNTHETIC_CALIBRATED); the real-data track checks the same models on IMF PortWatch counts."
+  ],
+  "n_boot": 1000
+}

@@ -1,0 +1,17 @@
+{
+  "model": "transformer",
+  "chosen_on": "validation: skill vs persistence for dwell at 24 h, then episode recall",
+  "val_skill_dwell_24h": 0.1797,
+  "best_baseline_on_val": "xgb_lag",
+  "best_baseline_val_skill_dwell_24h": 0.1463,
+  "beats_best_baseline_on_val": true,
+  "alert_rule": {
+    "A": "alert when any horizon's median dwell forecast >= node threshold",
+    "B": "alert when max P(dwell >= threshold) >= 0.70 (p* chosen on validation by cost)",
+    "p_star": 0.7,
+    "thresholds_file": "Stage02_DL/reports/eval_alert_thresholds.csv",
+    "operating_rule": "B_prob_ge_0.70",
+    "operating_rule_chosen_on": "validation warning cost (10 per missed episode + 1 per false alarm)"
+  },
+  "model_version": "v2.0-fast"
+}

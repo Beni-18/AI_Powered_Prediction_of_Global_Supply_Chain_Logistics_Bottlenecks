@@ -118,3 +118,46 @@ def lead_time_by_node(alerts: pd.DataFrame, onsets: pd.DataFrame, max_lookback_h
         "q75_lead_h": float(np.percentile(caught, 75)) if len(caught) else float("nan"),
         "n_alerts": n_alerts, "false_alarms": false_alarms,
     }
+
+
+def episode_hours(times, values, threshold: float, min_hours: int = 6, min_gap_hours: int = 24, bridge_hours: int = 3) -> pd.Series:
+    """Boolean hourly series: True for every hour that belongs to an episode (same rules as episodes_from_series).
+
+    Used to silence "alerts" raised while a node is already in a bottleneck: those are not early warnings.
+    """
+    series = pd.Series(np.asarray(values, dtype=float), index=pd.to_datetime(pd.Series(list(times))).dt.floor("h"))
+    series = series[~series.index.duplicated(keep="last")].sort_index()
+    grid = series.reindex(pd.date_range(series.index[0], series.index[-1], freq="h"))
+    above = (grid.ffill(limit=bridge_hours) > threshold).to_numpy()
+    inside = np.zeros(len(above), dtype=bool)
+    runs, i = [], 0
+    while i < len(above):
+        if not above[i]:
+            i += 1
+            continue
+        j = i
+        while j + 1 < len(above) and above[j + 1]:
+            j += 1
+        if j - i + 1 >= min_hours:
+            runs.append((i, j))
+        i = j + 1
+    # Runs closer than min_gap_hours are one episode, so the hours between them count as inside it too.
+    merged = []
+    for start, end in runs:
+        if merged and start - merged[-1][1] < min_gap_hours:
+            merged[-1] = (merged[-1][0], end)
+        else:
+            merged.append((start, end))
+    for start, end in merged:
+        inside[start:end + 1] = True
+    return pd.Series(inside, index=grid.index)
+
+
+def wilson_interval(k: int, n: int, z: float = 1.96) -> tuple:
+    """95% Wilson interval for a proportion k/n (better than +-1.96 sd when n is small, as episode counts are)."""
+    if n == 0:
+        return float("nan"), float("nan")
+    p = k / n
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return float(centre - half), float(centre + half)
