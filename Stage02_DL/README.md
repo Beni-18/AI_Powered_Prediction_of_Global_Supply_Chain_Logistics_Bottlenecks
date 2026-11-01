@@ -52,12 +52,11 @@ On macOS, PyTorch and XGBoost clash over OpenMP in one process. The scripts and 
 3. [SHOULD] Rolling-origin backtest: a `--fold k` option (3 expanding folds) so Role 4 can report skill mean +- spread.
 4. [STRETCH] 1D-CNN baseline; per-node-type heads.
 
-**Role 2 - EDA (Isha)** - `02_eda_engineer.py` is still a stub; everything it needs exists:
-1. [MUST] ACF/PACF + ADF, STL (24/168), the 5 ambiguous graphs, node-to-node lead-lag (`eda_leadlag_edges.csv`, compare with `typical_transit_days`), imputed-hour report, recommendations.
-2. [MUST] Attribution on the saved LSTM: `Stage2Forecaster.from_artifact("lstm_forecaster")` + `sim_window(...)` give the exact input tensors (see the docstring of `common/modelkit/dl_infer.py`).
-3. [MUST] Noise-channel test: `python 03_dl_engineer.py --noise-channel` saves `artifacts/noise_check/lstm_noise.pt`; its last two inputs are pure noise / time-shuffled - attribution there must be ~0.
-4. [MUST] Attention maps: `TransformerForecaster.attention_maps(x)` for 3 episodes.
-5. [SHOULD] graph_full vs graph_none attribution.
+**Role 2 - EDA (Isha)** - `02_eda_engineer.py` is built (1 Nov, by Role 4) and run on the fast models: every Day 2 MUST + the
+graph-attribution SHOULD, plus lead-lag on the real PortWatch data. Results: `reports/eda_findings.md`; details in `HANDOFF/02_eda_engineer.md`.
+1. [MUST] Review the findings and charts; re-run `python 02_eda_engineer.py` after the full-run models are merged and commit the `eda_*` files.
+2. [MUST] Post the three best findings in the chat; answer Role 4's alert-rule question (p95 vs structural rule).
+3. [SHOULD] Granger-causality between linked nodes, compared with `eda_leadlag_edges.csv`.
 
 **Role 4 - Evaluation (Bennish)**
 1. Re-run `04_evaluation_engineer.py` after the full run; clean-clone verify the C-DL ledger rows (PENDING -> VERIFIED).
