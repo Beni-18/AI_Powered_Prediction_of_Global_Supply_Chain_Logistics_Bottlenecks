@@ -1,0 +1,13 @@
+rule,flagged_episodes,episodes_per_node_per_30d,explained_by_event_share,flagged_hour_share,event_type,events,events_caught,recall
+structural_3x_noise_24h,15.0,0.055,0.9333,0.0054,ALL,45,13,0.2889
+structural_3x_noise_24h,,,,,CUSTOMS_SURGE,14,3,0.2143
+structural_3x_noise_24h,,,,,CYBER_OUTAGE,2,1,0.5
+structural_3x_noise_24h,,,,,DEMAND_SURGE,5,2,0.4
+structural_3x_noise_24h,,,,,EQUIPMENT_FAILURE,15,2,0.1333
+structural_3x_noise_24h,,,,,LABOR_STRIKE,9,5,0.5556
+p95_dwell_6h (Role 4),112.0,0.4105,0.6161,0.025,ALL,45,32,0.7111
+p95_dwell_6h (Role 4),,,,,CUSTOMS_SURGE,14,11,0.7857
+p95_dwell_6h (Role 4),,,,,CYBER_OUTAGE,2,1,0.5
+p95_dwell_6h (Role 4),,,,,DEMAND_SURGE,5,5,1.0
+p95_dwell_6h (Role 4),,,,,EQUIPMENT_FAILURE,15,8,0.5333
+p95_dwell_6h (Role 4),,,,,LABOR_STRIKE,9,7,0.7778

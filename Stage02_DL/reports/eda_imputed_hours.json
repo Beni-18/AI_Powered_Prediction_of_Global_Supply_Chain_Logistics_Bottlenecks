@@ -1,0 +1,15 @@
+{
+  "total_imputed_hours": 2379,
+  "share_of_all_hours": 0.010058346017250128,
+  "nodes_with_imputed_hours": 27,
+  "top3_nodes_share": 0.1319882303488861,
+  "chi2_uniform_across_nodes_p": 0.47577465031997346,
+  "max_gap_h": 2,
+  "share_in_gaps_of_2h_plus": 0.025224169819251786,
+  "busiest_hour_of_day_vs_quietest": 1.6266666666666667,
+  "rate_inside_event_windows": 0.010740032367220832,
+  "rate_outside_event_windows": 0.010038176412461965,
+  "rate_ratio_events": 1.069918671073318,
+  "rate_on_hours_above_alert_line": 0.00767770164286304,
+  "rate_on_other_hours": 0.010186848003850148
+}
