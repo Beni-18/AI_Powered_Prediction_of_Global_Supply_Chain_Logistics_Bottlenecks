@@ -1,0 +1,28 @@
+{
+  "episodes_plotted": [
+    {
+      "node": "PORT_US_NYC",
+      "onset": "2025-12-22 19:00:00+00:00",
+      "peak_vs_alert": 2.12
+    },
+    {
+      "node": "CHOKE_CAPE_GOOD_HOPE",
+      "onset": "2025-11-20 08:00:00+00:00",
+      "peak_vs_alert": 1.78
+    },
+    {
+      "node": "CHOKE_HORMUZ",
+      "onset": "2025-11-21 09:00:00+00:00",
+      "peak_vs_alert": 1.48
+    }
+  ],
+  "share_on_last_6h_all": 0.08907493203878403,
+  "share_on_last_6h_pre_episode": 0.08831342309713364,
+  "uniform_share_last_6h": 0.08333333333333333,
+  "pre_episode_pairs": 131,
+  "attention_per_imputed_hour": 0.013550138978100328,
+  "attention_per_measured_hour": 0.0138957923207619,
+  "imputed_vs_measured_ratio": 0.9751253232141986,
+  "windows_with_imputed_and_measured": 2103,
+  "uniform_attention_per_hour": 0.013888888888888888
+}

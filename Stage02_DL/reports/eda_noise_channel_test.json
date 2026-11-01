@@ -1,0 +1,75 @@
+{
+  "status": "PASS",
+  "rule": "PASS if each noise channel gets < 2% of the absolute attribution AND less than the median real channel, AND shuffling the noise channels changes the test pinball loss by < 1% (a real driver is shuffled for contrast)",
+  "model": "artifacts/noise_check/lstm_noise.pt",
+  "test_origins": 37,
+  "attribution_checks": {
+    "dwell/noise_random": {
+      "share": 0.00774999987334013,
+      "median_real_channel_share": 0.0298,
+      "rank_of_15": 11,
+      "pass": true
+    },
+    "dwell/noise_time_shuffled_ch0": {
+      "share": 0.006149999797344208,
+      "median_real_channel_share": 0.0298,
+      "rank_of_15": 14,
+      "pass": true
+    },
+    "throughput/noise_random": {
+      "share": 0.009189999662339687,
+      "median_real_channel_share": 0.02223,
+      "rank_of_15": 11,
+      "pass": true
+    },
+    "throughput/noise_time_shuffled_ch0": {
+      "share": 0.0053400001488626,
+      "median_real_channel_share": 0.02223,
+      "rank_of_15": 14,
+      "pass": true
+    }
+  },
+  "channel_shares": {
+    "dwell": {
+      "avg_dwell_time_hours": 0.4741699993610382,
+      "throughput_teu_per_hr": 0.04546999931335449,
+      "capacity_utilization_pct": 0.06114000082015991,
+      "customs_hold_hours": 0.02979999966919422,
+      "weather_severity_index": 0.022919999435544014,
+      "labor_deficit_ratio": 0.07947999984025955,
+      "equipment_availability_pct": 0.1035899966955185,
+      "inventory_level_teu": 0.1236099973320961,
+      "is_imputed": 0.0003699999942909926,
+      "cal_a_sin": 0.007309999782592058,
+      "cal_a_cos": 0.014560000039637089,
+      "dow_sin": 0.007139999885112047,
+      "dow_cos": 0.016540000215172768,
+      "noise_random": 0.00774999987334013,
+      "noise_time_shuffled_ch0": 0.006149999797344208
+    },
+    "throughput": {
+      "avg_dwell_time_hours": 0.09356000274419785,
+      "throughput_teu_per_hr": 0.4785900115966797,
+      "capacity_utilization_pct": 0.09450999647378922,
+      "customs_hold_hours": 0.02222999930381775,
+      "weather_severity_index": 0.019710000604391098,
+      "labor_deficit_ratio": 0.0524899996817112,
+      "equipment_availability_pct": 0.04659999907016754,
+      "inventory_level_teu": 0.13991999626159668,
+      "is_imputed": 0.0003100000030826777,
+      "cal_a_sin": 0.0069599999114871025,
+      "cal_a_cos": 0.013299999758601189,
+      "dow_sin": 0.00570000009611249,
+      "dow_cos": 0.011579999700188637,
+      "noise_random": 0.009189999662339687,
+      "noise_time_shuffled_ch0": 0.0053400001488626
+    }
+  },
+  "completeness_gap_median": {
+    "dwell": 0.00044940442597447285,
+    "throughput": 0.0019041268798665168
+  },
+  "test_pinball_base": 0.15658,
+  "pinball_change_noise_shuffled": -9e-05,
+  "pinball_change_utilisation_shuffled": 0.04641
+}

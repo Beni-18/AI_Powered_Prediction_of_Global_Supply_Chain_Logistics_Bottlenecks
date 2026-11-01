@@ -1,0 +1,53 @@
+model,target,channel,group,share_abs_attribution,rank
+lstm_forecaster,dwell,avg_dwell_time_hours,own history,0.47389,1
+lstm_forecaster,dwell,capacity_utilization_pct,operational driver,0.12512,2
+lstm_forecaster,dwell,equipment_availability_pct,operational driver,0.12277,3
+lstm_forecaster,dwell,inventory_level_teu,yard state,0.07204,4
+lstm_forecaster,dwell,labor_deficit_ratio,operational driver,0.07023,5
+lstm_forecaster,dwell,throughput_teu_per_hr,own history,0.04557,6
+lstm_forecaster,dwell,customs_hold_hours,operational driver,0.03032,7
+lstm_forecaster,dwell,weather_severity_index,operational driver,0.0251,8
+lstm_forecaster,dwell,dow_cos,calendar,0.01339,9
+lstm_forecaster,dwell,cal_a_cos,calendar,0.00865,10
+lstm_forecaster,dwell,dow_sin,calendar,0.00734,11
+lstm_forecaster,dwell,cal_a_sin,calendar,0.00529,12
+lstm_forecaster,dwell,is_imputed,reporting flag,0.00028,13
+lstm_forecaster,throughput,throughput_teu_per_hr,own history,0.49055,1
+lstm_forecaster,throughput,inventory_level_teu,yard state,0.11613,2
+lstm_forecaster,throughput,capacity_utilization_pct,operational driver,0.10608,3
+lstm_forecaster,throughput,avg_dwell_time_hours,own history,0.10325,4
+lstm_forecaster,throughput,equipment_availability_pct,operational driver,0.06054,5
+lstm_forecaster,throughput,labor_deficit_ratio,operational driver,0.04947,6
+lstm_forecaster,throughput,customs_hold_hours,operational driver,0.01829,7
+lstm_forecaster,throughput,weather_severity_index,operational driver,0.01809,8
+lstm_forecaster,throughput,cal_a_cos,calendar,0.01325,9
+lstm_forecaster,throughput,dow_cos,calendar,0.01013,10
+lstm_forecaster,throughput,dow_sin,calendar,0.00736,11
+lstm_forecaster,throughput,cal_a_sin,calendar,0.00662,12
+lstm_forecaster,throughput,is_imputed,reporting flag,0.00026,13
+transformer_forecaster,dwell,avg_dwell_time_hours,own history,0.4008,1
+transformer_forecaster,dwell,capacity_utilization_pct,operational driver,0.154,2
+transformer_forecaster,dwell,inventory_level_teu,yard state,0.08866,3
+transformer_forecaster,dwell,equipment_availability_pct,operational driver,0.08797,4
+transformer_forecaster,dwell,labor_deficit_ratio,operational driver,0.06758,5
+transformer_forecaster,dwell,throughput_teu_per_hr,own history,0.05399,6
+transformer_forecaster,dwell,cal_a_cos,calendar,0.04081,7
+transformer_forecaster,dwell,weather_severity_index,operational driver,0.0332,8
+transformer_forecaster,dwell,customs_hold_hours,operational driver,0.02734,9
+transformer_forecaster,dwell,cal_a_sin,calendar,0.02527,10
+transformer_forecaster,dwell,dow_cos,calendar,0.01017,11
+transformer_forecaster,dwell,dow_sin,calendar,0.00994,12
+transformer_forecaster,dwell,is_imputed,reporting flag,0.00027,13
+transformer_forecaster,throughput,throughput_teu_per_hr,own history,0.44135,1
+transformer_forecaster,throughput,inventory_level_teu,yard state,0.15506,2
+transformer_forecaster,throughput,capacity_utilization_pct,operational driver,0.11255,3
+transformer_forecaster,throughput,avg_dwell_time_hours,own history,0.07339,4
+transformer_forecaster,throughput,labor_deficit_ratio,operational driver,0.06162,5
+transformer_forecaster,throughput,cal_a_cos,calendar,0.03109,6
+transformer_forecaster,throughput,equipment_availability_pct,operational driver,0.0305,7
+transformer_forecaster,throughput,cal_a_sin,calendar,0.02867,8
+transformer_forecaster,throughput,weather_severity_index,operational driver,0.02509,9
+transformer_forecaster,throughput,customs_hold_hours,operational driver,0.01824,10
+transformer_forecaster,throughput,dow_cos,calendar,0.01117,11
+transformer_forecaster,throughput,dow_sin,calendar,0.01099,12
+transformer_forecaster,throughput,is_imputed,reporting flag,0.00028,13
