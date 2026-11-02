@@ -1,9 +1,9 @@
 # Stage 02 - Role 3 - Data & Integration Engineer -> hand-off note (05_integration_engineer.py)
 
 status: IN_PROGRESS
-updated_utc: 2026-10-31
-git_commit: not committed yet (branch to be opened by Bennish)
-data_version: v1
+updated_utc: 2026-11-02
+git_commit: branch integ/stage02-wrapup
+data_version: v1, models v2.0 (full run)
 
 > Allowed status values: NOT_STARTED, IN_PROGRESS, READY, BLOCKED.
 > Only the role named in the title edits this file. Everyone else only reads it.
@@ -28,7 +28,11 @@ data_version: v1
 
 ## Contract check (paste the output of `python scripts/validate_contract.py <schema> <file>`)
 ```
-(no hand-over file; API request ranges come from contracts/schemas/hourly_node_telemetry.schema.json)
+(no hand-over file of my own; API request ranges come from contracts/schemas/hourly_node_telemetry.schema.json)
+Checked on 2026-11-02 against the files the API and pages read:
+PASS  Stage02_DL/predictions/dl_forecasts.csv.gz  (729000 rows, schema 'dl_forecasts')   <- all rows model_version v2.0
+PASS  Stage02_DL/predictions/dl_backtest_folds.csv.gz  (249480 rows, schema 'dl_forecasts')  note: extra column 'fold'
+PASS  Stage02_DL/data/hourly_node_telemetry.csv.gz  (236520 rows, schema 'hourly_node_telemetry')
 ```
 
 ## Decisions and assumptions (what you decided and why, in plain English)
@@ -44,13 +48,48 @@ data_version: v1
 - Until `04_evaluation_engineer.py` has run, the map shows a warning and no alert probabilities (no thresholds yet), and the API defaults to the first loaded model.
 - Fast-mode models are in `artifacts/` now. Re-run the latency script after the full run.
 
-## Open questions for other roles (name the role and the question)
-- Role 4: should the API add the probability alert rule (p* from `eval_champion.json`) to its answer, next to `alert_prob_24h`?
+## Review and full-run verification by Role 3 (2026-11-02)
+- **Environment:** `.venv` with torch 2.15.0, fastapi 0.162.0, starlette 1.10.0, httpx 0.28.1, httpx2 2.16.0.
+- **Evaluation was stale:** the models in `artifacts/` were v2.0 (full run) but `eval_champion.json` said `v2.0-fast`, so the
+  API used a fast-run champion and alert rule. `04_evaluation_engineer.py` was re-run unchanged (Cross-role commit). Champion
+  is still `transformer`, chosen on validation; p* moved from 0.70 to 0.65; alert thresholds (`eval_alert_thresholds.csv`) unchanged.
+- **httpx + httpx2** added to `requirements-dev.txt`. `httpx2` is the Pydantic team's package that starlette 1.x's TestClient
+  uses. The 11 Stage 2 API tests now RUN: 11 passed, 0 skipped.
+- **Latency over HTTP** (`reports/integ_latency.json`): 200 POST /forecast calls per model through FastAPI's in-process
+  TestClient, real 72-hour test-period windows, 1 warm-up call not counted, 0 failures (every answer 200 + review flag):
 
-## Your tasks (Pravin)
-1. [MUST] Review the API, both pages and the tests.
-2. [MUST] Run the stage from a clean clone (commands in `Stage02_DL/README.md`), share the results with the team, and fix what breaks. Commit the full-run artefacts with Role 1.
-3. [MUST] Add `httpx` and `httpx2` to `requirements-dev.txt` so the API tests run; re-run `python 05_integration_engineer.py` for latency over HTTP and paste p95 here. Start the API and try `/docs`.
-4. [MUST] Deploy the two pages to the live Streamlit app and check them on the deployed URL.
+  | model | p50 ms | p95 ms |
+  |---|---|---|
+  | transformer (champion) | 7.35 | 8.57 |
+  | lstm | 9.66 | 10.11 |
+  | graph_full | 27.31 | 30.86 |
+  | graph_shuffled | 27.09 | 31.69 |
+  | graph_none | 27.00 | 30.29 |
+
+  In-process means no network hop; a real deployment adds network time. Earlier 3-5 ms numbers had no HTTP layer at all.
+- **Live API** (`uvicorn 05_integration_engineer:app --port 8002`): `/health`, `/models` (5 models, all v2.0, champion
+  transformer), `/nodes` (27), `/network` (27 nodes, 50 lanes), `/docs` and `/openapi.json` (200),
+  `GET /forecast/PORT_US_LAX?as_of=2025-12-01T00:00:00Z` (200), `POST /forecast` with 72 real hours (200, identical to the
+  replay). Errors: 71 rows, unknown node, unknown model and a graph model outside the stored grid all give 422 with a message.
+  Every forecast answer carries `requires_operator_review: true` (`/nodes` and `/network` are registry data, not predictions).
+- **Consistency:** origin 2025-12-01T00:00Z (test), 5 models x 3 nodes (PORT_US_LAX, PORT_NL_RTM, CHOKE_SUEZ) x 5 horizons x
+  2 targets x 3 quantiles = 450 values; max |API - dl_forecasts.csv.gz| = 0.0000.
+- **Dashboard** (`streamlit run app.py`): all 5 pages open with no exception. Network forecast shows the map coloured by
+  P(above line); Forecast evidence shows transformer, skill 0.171 (24 h) / 0.222 (7 d), recall 0.77, median lead 22 h,
+  which equal `eval_report.md`. The log shows one scikit-learn `InconsistentVersionWarning` (Stage 1 model pickled with
+  1.8.0, loaded with 1.9.1); see open items.
+
+## Open questions for other roles (name the role and the question)
+- Role 4: answered. The API now returns `alert_rule` for the champion: rule B from `eval_champion.json` (highest
+  P(dwell >= threshold) over all horizons >= p*, the same calculation as `04_evaluation_engineer.py`). Other models get
+  `null`, because p* was chosen on validation for the champion only.
+- Role 1: Stage 1 artefacts were saved with scikit-learn 1.8.0; should we pin `scikit-learn<1.9` or re-save them?
+
+## Your tasks (Pravin) - status
+1. [MUST] Review the API, both pages and the tests - **done** (see review above; one addition: `alert_rule`).
+2. [MUST] Run the stage on the full-run outputs - **done locally** (Role 1 committed the full-run artefacts in PR #22).
+   Clean-clone reproduction of 02/04/05 is **not done yet**.
+3. [MUST] httpx + httpx2, latency over HTTP, `/docs` - **done**.
+4. [MUST] Deploy and check on the live URL - **not done**: the live app deploys from `main`, so it needs this PR merged.
 5. [SHOULD] Polish the map (lane colours by mode, node labels) and add a link to Role 4's `eval_visual_benchmark.png` on the forecast page.
 6. [STRETCH] Animated propagation replay along the lanes for one test episode.
