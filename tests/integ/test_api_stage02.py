@@ -104,3 +104,17 @@ def test_nodes_and_network(client):
     assert len(client.get("/nodes").json()["nodes"]) == 27
     net = client.get("/network").json()
     assert len(net["edges"]) == 50
+
+
+def test_alert_rule_follows_role4_p_star_for_the_champion_only(client, body):
+    """The champion's answer carries rule B with Role 4's p*; other models get no borrowed rule."""
+    champion = client.get("/models").json()["champion"]
+    ans = client.post(f"/forecast?model={champion}", json=body).json()
+    rule = ans["alert_rule"]
+    if rule is None:
+        pytest.skip("no eval_champion.json / alert thresholds on this machine")
+    assert rule["alert"] == (rule["max_prob_any_horizon"] >= rule["p_star"])
+    # The 24 h probability is one of the horizons, so the maximum can never be smaller.
+    assert rule["max_prob_any_horizon"] >= ans["alert_prob_24h"]
+    other = next(m["model_name"] for m in client.get("/models").json()["models"] if m["model_name"] != champion)
+    assert client.post(f"/forecast?model={other}", json=body).json()["alert_rule"] is None

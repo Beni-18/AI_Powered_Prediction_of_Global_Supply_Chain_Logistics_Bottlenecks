@@ -1,27 +1,27 @@
 {
   "calls_per_model": 200,
-  "date": "2026-10-31",
+  "method": "FastAPI TestClient, in-process, POST /forecast with 72 test-period hours",
+  "date": "2026-11-02",
   "models": {
     "lstm": {
-      "p50_ms": 4.55,
-      "p95_ms": 4.75
+      "p50_ms": 9.66,
+      "p95_ms": 10.11
     },
     "transformer": {
-      "p50_ms": 3.08,
-      "p95_ms": 3.25
+      "p50_ms": 7.35,
+      "p95_ms": 8.57
     },
     "graph_full": {
-      "p50_ms": 19.64,
-      "p95_ms": 20.97
+      "p50_ms": 27.31,
+      "p95_ms": 30.86
     },
     "graph_shuffled": {
-      "p50_ms": 19.57,
-      "p95_ms": 20.53
+      "p50_ms": 27.09,
+      "p95_ms": 31.69
     },
     "graph_none": {
-      "p50_ms": 19.43,
-      "p95_ms": 20.25
+      "p50_ms": 27.0,
+      "p95_ms": 30.29
     }
-  },
-  "method": "direct Service.run calls (no HTTP: starlette's test client needs httpx2, not installed here)"
+  }
 }

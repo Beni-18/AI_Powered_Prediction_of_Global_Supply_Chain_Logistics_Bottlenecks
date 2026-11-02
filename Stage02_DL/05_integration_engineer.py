@@ -133,6 +133,21 @@ class Service:
             raise ValueError(f"unknown model '{name}'; available: {sorted(self.forecasters)}")
         return name, self.forecasters[name]
 
+    def alert_rule(self, name: str, q: np.ndarray, out: dict, thr) -> Optional[dict]:
+        """Role 4's validated alert rule B: alert when the highest P(dwell >= threshold) over all horizons >= p*."""
+        p_star = self.champion_file.get("alert_rule", {}).get("p_star")
+        # p* was chosen on validation for the champion only, so other models get no rule instead of a borrowed one.
+        if thr is None or p_star is None or name != self.champion_file.get("model"):
+            return None
+        from common.evalkit.forecast import exceedance_probability
+
+        # Same calculation as 04_evaluation_engineer.py: one probability per horizon, then the maximum.
+        d = q[:, out["targets"].index("dwell"), :]                                 # [H, 3]
+        max_prob = float(np.max(exceedance_probability(d[:, 0], d[:, 1], d[:, 2], thr)))
+        return {"rule": self.champion_file["alert_rule"].get("operating_rule"), "p_star": p_star,
+                "max_prob_any_horizon": round(max_prob, 4), "alert": bool(max_prob >= p_star),
+                "chosen_on": self.champion_file["alert_rule"].get("operating_rule_chosen_on")}
+
     def run(self, node_id: str, model: Optional[str], records: Optional[pd.DataFrame] = None, as_of=None) -> dict:
         """Forecast one node from posted records (POST) or from the stored grid at `as_of` (GET replay)."""
         from common.modelkit.dl_infer import sim_window, single_node_window
@@ -166,10 +181,12 @@ class Service:
 
             d = q[out["horizons_h"].index(ALERT_HORIZON_H), out["targets"].index("dwell")]
             alert_prob = round(float(exceedance_probability(d[0], d[1], d[2], thr)), 4)
+        alert_rule = self.alert_rule(name, q, out, thr)
         return {"node_id": node_id, "origin_ts": last_hour.strftime("%Y-%m-%dT%H:%M:%SZ"), "model_name": name,
                 "model_version": f.meta.get("model_version"), "horizons": horizons,
                 "interval": "80% (10th-90th percentile, split-conformal corrected on validation)",
                 "alert_threshold_dwell_h": None if thr is None else round(float(thr), 3), "alert_prob_24h": alert_prob,
+                "alert_rule": alert_rule,
                 "evidence": {"inputs": source, "threshold_source": "Stage02_DL/reports/eval_alert_thresholds.csv (node p95 of train dwell)",
                              "champion_chosen_on": self.champion_file.get("chosen_on")},
                 "data_origin": "SYNTHETIC_CALIBRATED", "requires_operator_review": True}
