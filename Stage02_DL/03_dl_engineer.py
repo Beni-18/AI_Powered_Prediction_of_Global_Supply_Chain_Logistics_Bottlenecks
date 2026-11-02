@@ -379,7 +379,7 @@ def add_ensemble() -> int:
         if track == "sim":
             write_validated_csv(out, "dl_forecasts", path)
         else:
-            out.to_csv(path, index=False)
+            out.to_csv(path, index=False, compression={"method": "gzip", "mtime": 0})
         save_ensemble(track, margins, data, version)
         print(f"[{track}] added {sum(len(r) for r in rows):,} ensemble rows -> {path}")
     return 0
@@ -400,7 +400,7 @@ def run_seeds(args: argparse.Namespace) -> int:
         out = run_track("sim", run_args, card, [])
         frames.append(out.assign(seed=seed))
     path = stage_path(STAGE, "predictions", "dl_seed_runs.csv.gz")
-    pd.concat(frames, ignore_index=True).to_csv(path, index=False)
+    pd.concat(frames, ignore_index=True).to_csv(path, index=False, compression={"method": "gzip", "mtime": 0})
     print(f"wrote {sum(len(f) for f in frames):,} rows for seeds {args.seeds} -> {path}")
     return 0
 
@@ -567,7 +567,8 @@ def main() -> int:
         print(f"wrote {len(outputs['sim']):,} rows -> {path}")
     if outputs.get("real") is not None:
         path = out_path("predictions", "dl_real_forecasts.csv.gz")
-        outputs["real"].to_csv(path, index=False)
+        # A fixed gzip timestamp, so the same forecasts always give the same file bytes (clean-clone checks).
+        outputs["real"].to_csv(path, index=False, compression={"method": "gzip", "mtime": 0})
         print(f"wrote {len(outputs['real']):,} rows -> {path}")
 
     # Step 7: training curves and the model card (val numbers only; Role 4 owns every test number).
