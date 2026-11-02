@@ -1,4 +1,5 @@
 split,model,rule,n_episodes,n_caught,episode_recall,recall_lo,recall_hi,median_lead_h,q25_lead_h,q75_lead_h,n_alerts,false_alarms,false_alarms_per_node_week,false_alarm_share,warning_cost,chosen_on_val
+test,ensemble,B_prob_ge_0.65,13,10,0.7692,0.4974,0.9182,21.5,7.0,75.75,20,8,0.0553,0.4,38.0,True
 test,graph_full,B_prob_ge_0.40,13,13,1.0,0.7719,1.0,23.0,7.0,95.0,79,38,0.2627,0.481,38.0,True
 test,lstm,B_prob_ge_0.65,13,8,0.6154,0.3552,0.8229,16.0,8.25,46.25,16,5,0.0346,0.3125,55.0,True
 test,persistence,B_prob_ge_0.90,13,5,0.3846,0.1771,0.6448,56.0,15.0,66.0,22,13,0.0899,0.5909,93.0,True

@@ -27,6 +27,12 @@ READS : Stage02_DL/predictions/dl_forecasts.csv.gz          (Role 1, contract dl
         contracts/cost_policy.json, contracts/network_nodes.csv
 WRITES: Stage02_DL/reports/eval_*.csv|json|png|md, claims/CLAIMS_LEDGER.md
 
+EXTRA CHECKS (when Role 1's files exist)
+    9. Rolling-origin backtest: skill per fold and its spread over 3 folds, pooled early warning (rule A)
+       (predictions/dl_backtest_folds.csv.gz -> eval_backtest_folds.csv, eval_backtest_summary.csv, eval_backtest_warning.csv)
+   10. Seed variance: the same models retrained with other seeds (predictions/dl_seed_runs.csv.gz -> eval_seed_runs.csv,
+       eval_seed_summary.csv); is the champion's lead over XGBoost bigger than the seed-to-seed spread?
+
 HOW TO RUN
     python Stage02_DL/04_evaluation_engineer.py                         (real run, ~1-2 min)
     python Stage02_DL/04_evaluation_engineer.py --out-dir /tmp/e2       (dry run: no ledger)
@@ -66,7 +72,9 @@ ORIGIN_STEP_H = 6         # forecasts are issued every 6 hours (Role 1's file)
 P_GRID = np.round(np.arange(0.05, 0.96, 0.05), 2)   # candidate probability thresholds for rule B
 COLORS = {"persistence": "#7f7f7f", "seasonal_naive": "#bcbd22", "rolling_mean": "#c7c7c7", "xgb_lag": "#ff7f0e",
           "lstm": "#1f77b4", "transformer": "#9467bd", "graph_full": "#2ca02c", "graph_shuffled": "#98df8a",
-          "graph_none": "#d62728", "stage1_risk": "#8c564b"}
+          "graph_none": "#d62728", "stage1_risk": "#8c564b", "ensemble": "#17becf"}
+ENSEMBLE_MEMBERS = ("transformer", "xgb_lag")      # Role 1's ensemble = the mean of these two models' quantiles
+SEED_MODELS = ("xgb_lag", "lstm", "transformer", "ensemble")
 
 
 # ------------------------------------------------------------------ loading and trust checks
@@ -79,6 +87,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--out-dir", type=Path, default=None, help="custom folder = dry run (no ledger)")
     ap.add_argument("--n-boot", type=int, default=1000, help="bootstrap resamples (1000 for real runs)")
     ap.add_argument("--no-ledger", action="store_true", help="do not touch claims/CLAIMS_LEDGER.md")
+    ap.add_argument("--backtest", type=Path, default=stage_path(STAGE, "predictions", "dl_backtest_folds.csv.gz"))
+    ap.add_argument("--seed-runs", type=Path, default=stage_path(STAGE, "predictions", "dl_seed_runs.csv.gz"))
     return ap.parse_args()
 
 
@@ -556,6 +566,99 @@ def plot_real_example(keys, wide, out: Path, champion: str) -> None:
     plt.close(fig)
 
 
+# ------------------------------------------------------------------ 9-10: backtest folds and seed variance
+
+def backtest_folds(path: Path, grid: pd.DataFrame, thr: pd.Series, onsets: dict, inside: dict, n_boot: int,
+                   miss_cost: float, fa_cost: float) -> tuple | None:
+    """Role 1's rolling-origin folds: skill vs persistence per fold, its spread over folds, and pooled early warning.
+
+    Each fold trained on data before its cutoff and was early-stopped on its own 21-day window, so every fold is a
+    small, separate "validation" of the whole method. The fold models have no conformal intervals, so early warning
+    uses rule A (median forecast crosses the node's alert line) only.
+    """
+    if not path.exists():
+        return None
+    df = load_forecasts(path, validate=False)
+    rows, warn_rows = [], []
+    for fold, part in df.groupby("fold"):
+        errors: list = []
+        keys, wide, y = to_wide(part.drop(columns="fold"), errors)
+        ok = attach_truth_from_grid(keys, grid, "hour_ts", errors)
+        if errors:
+            raise SystemExit(f"backtest fold {fold}: {errors}")
+        # The ensemble, built the same way as Role 1's: the mean of the two members' forecasts.
+        if all(m in wide for m in ENSEMBLE_MEMBERS):
+            wide["ensemble"] = {k: np.mean([wide[m][k] for m in ENSEMBLE_MEMBERS], axis=0) for k in ("pred", "lo", "hi")}
+        blocks = keys["origin_ts"].dt.strftime("%Y-%m-%d").to_numpy()
+        for target in sorted(keys["target"].unique()):
+            for h in sorted(keys["horizon_h"].unique()):
+                sel = ((keys["target"] == target) & (keys["horizon_h"] == h)).to_numpy() & ok
+                base = np.abs(wide["persistence"]["pred"][sel] - y[sel])
+                for m in wide:
+                    err = np.abs(wide[m]["pred"][sel] - y[sel])
+                    sk, lo, hi = block_skill_ci(err, base, blocks[sel], n=n_boot, seed=SEED)
+                    rows.append({"fold": int(fold), "model": m, "target": target, "horizon_h": int(h), "n": int(sel.sum()),
+                                 "mae": err.mean(), "skill_vs_persistence": sk, "skill_lo": lo, "skill_hi": hi})
+        span = (keys["origin_ts"].min(), keys["origin_ts"].max())
+        for m in wide:
+            alerts = alert_frame(keys, wide, m, "val", thr, inside)
+            warn_rows.append({"fold": int(fold), "model": m,
+                              **score_alerts(alerts[alerts["crosses"]], onsets, *span, keys["node_id"].nunique())})
+    per_fold = pd.DataFrame(rows).round(5)
+    summary = (per_fold.groupby(["model", "target", "horizon_h"])["skill_vs_persistence"]
+               .agg(folds="count", mean="mean", sd="std", min="min", max="max").reset_index().round(4))
+    warn = pd.DataFrame(warn_rows)
+    pooled = warn.groupby("model")[["n_episodes", "n_caught", "n_alerts", "false_alarms"]].sum().reset_index()
+    pooled["episode_recall"] = pooled["n_caught"] / pooled["n_episodes"].replace(0, np.nan)
+    ci = [wilson_interval(int(c), int(n)) for c, n in zip(pooled["n_caught"], pooled["n_episodes"])]
+    pooled["recall_lo"], pooled["recall_hi"] = [c[0] for c in ci], [c[1] for c in ci]
+    pooled["warning_cost"] = miss_cost * (pooled["n_episodes"] - pooled["n_caught"]) + fa_cost * pooled["false_alarms"]
+    pooled["rule"] = "A_median_crosses"
+    return per_fold, summary, pooled.round(4)
+
+
+def seed_study(path: Path, df: pd.DataFrame, keys: pd.DataFrame, ok: np.ndarray) -> tuple | None:
+    """Skill vs persistence of the same models trained with 3 seeds (42 from the main file + Role 1's extra seeds).
+
+    Returns (per-seed table, spread table) or None. Persistence and the measured-target mask come from the main file,
+    so every seed is scored on exactly the same forecasts.
+    """
+    if not path.exists():
+        return None
+    extra = pd.read_csv(path)
+    extra["origin_ts"] = pd.to_datetime(extra["origin_ts"], utc=True)
+    main = df[df["model_name"].isin(SEED_MODELS)].assign(seed=SEED)
+    runs = pd.concat([main[extra.columns.intersection(main.columns)], extra], ignore_index=True)
+    measured = keys[KEYS].assign(measured=ok)
+    pers = df[df["model_name"] == "persistence"][KEYS + ["y_pred"]].rename(columns={"y_pred": "persistence_pred"})
+    runs = runs.merge(measured, on=KEYS).merge(pers, on=KEYS)
+    runs = runs[runs["measured"]]
+    runs = runs.assign(err=(runs["y_pred"] - runs["y_true"]).abs(), base=(runs["persistence_pred"] - runs["y_true"]).abs())
+    per_seed = runs.groupby(["seed", "model_name", "split", "target", "horizon_h"])[["err", "base"]].mean().reset_index()
+    per_seed["skill_vs_persistence"] = 1 - per_seed["err"] / per_seed["base"]
+    per_seed = per_seed.rename(columns={"model_name": "model", "err": "mae"}).drop(columns="base").round(5)
+    spread = (per_seed.groupby(["model", "split", "target", "horizon_h"])["skill_vs_persistence"]
+              .agg(seeds="count", mean="mean", sd="std", min="min", max="max").reset_index().round(4))
+    return per_seed, spread
+
+
+def seed_verdict(per_seed: pd.DataFrame, champion: str) -> dict:
+    """Per seed: which model validation would pick, and the champion's test lead over xgb_lag (dwell 24 h)."""
+    out = {"by_seed": {}}
+    for seed, g in per_seed.groupby("seed"):
+        v = g[(g["split"] == "val") & (g["target"] == "dwell") & (g["horizon_h"] == 24) & (g["model"] != "xgb_lag")]
+        t = g[(g["split"] == "test") & (g["target"] == "dwell") & (g["horizon_h"] == 24)].set_index("model")["skill_vs_persistence"]
+        out["by_seed"][int(seed)] = {
+            "val_pick": str(v.sort_values("skill_vs_persistence", ascending=False)["model"].iloc[0]) if len(v) else None,
+            "test_skill_dwell_24h": {m: round(float(x), 4) for m, x in t.items()},
+            "champion_lead_over_xgb_dwell_24h": round(float(t.get(champion, np.nan) - t.get("xgb_lag", np.nan)), 4)}
+    leads = [v["champion_lead_over_xgb_dwell_24h"] for v in out["by_seed"].values()]
+    out["champion_lead_min"], out["champion_lead_max"] = float(np.nanmin(leads)), float(np.nanmax(leads))
+    out["lead_positive_every_seed"] = bool(np.nanmin(leads) > 0)
+    out["same_val_pick_every_seed"] = len({v["val_pick"] for v in out["by_seed"].values()}) == 1
+    return out
+
+
 # ------------------------------------------------------------------ 8: champion, ledger, report
 
 def choose_champion(acc: pd.DataFrame, lead: pd.DataFrame) -> dict:
@@ -615,6 +718,13 @@ def write_ledger(m: dict) -> None:
                      m["headline"]["real_skill"], "Stage02_DL/reports/eval_real_forecast_metrics.csv"))
         rows.append(("C-DL-14", f"REAL data: {c} skill vs the best baseline chosen on val, by horizon (test 2025-26)",
                      m["headline"]["real_skill_vs_best_baseline"], "Stage02_DL/reports/eval_real_forecast_metrics.csv"))
+    if "seed_skill_dwell_24h" in m["headline"]:
+        rows.append(("C-DL-15", f"{c} test skill vs persistence (dwell 24 h) across 3 training seeds, and its lead over xgb_lag",
+                     m["headline"]["seed_skill_dwell_24h"] + "; lead " + m["headline"]["seed_lead_over_xgb_dwell_24h"],
+                     "Stage02_DL/reports/eval_seed_summary.csv"))
+    if "backtest_skill_dwell_24h" in m["headline"]:
+        rows.append(("C-DL-16", "Rolling-origin backtest (3 folds): skill vs persistence, dwell 24 h, mean and spread over folds",
+                     m["headline"]["backtest_skill_dwell_24h"], "Stage02_DL/reports/eval_backtest_summary.csv"))
     for cid, claim, value, source in rows:
         ledger.upsert(cid, 2, claim, value, source, cmd, status="PENDING")
 
@@ -643,6 +753,12 @@ def write_report(path: Path, m: dict, acc: pd.DataFrame, lead: pd.DataFrame, abl
         f"- 80% interval coverage (dwell): **{h['coverage_dwell']}**.",
         f"- Graph ablation vs graph_none: {h['ablation_vs_none']}; vs graph_shuffled: {h['ablation_vs_shuffled']}.",
     ]
+    if "seed_skill_dwell_24h" in h:
+        lines.append(f"- Seed check (test, dwell 24 h): **{h['seed_skill_dwell_24h']}**; lead over xgb_lag across seeds: "
+                     f"**{h['seed_lead_over_xgb_dwell_24h']}**.")
+    if "backtest_skill_dwell_24h" in h:
+        lines.append(f"- Backtest, 3 rolling-origin folds (dwell 24 h): **{h['backtest_skill_dwell_24h']}**; pooled early warning "
+                     f"(rule A): {h['backtest_warning']}.")
     if m.get("real_track"):
         lines.append(f"- REAL data (PortWatch, test 2025-26), skill vs persistence: **{h['real_skill']}**; "
                      f"vs best baseline: **{h['real_skill_vs_best_baseline']}**.")
@@ -652,7 +768,9 @@ def write_report(path: Path, m: dict, acc: pd.DataFrame, lead: pd.DataFrame, abl
               "- `eval_interval_quality.csv`: coverage, width, interval score", "- `eval_lead_time.csv`, `eval_lead_time.png`: early warning",
               "- `eval_graph_ablation.csv`: does the real graph help", "- `eval_visual_benchmark.png/.csv/.md`: problem-statement benchmark",
               "- `eval_slices.csv`, `eval_leakage_tests.json`, `eval_champion.json`, `eval_alert_thresholds.csv`",
-              "- `eval_real_*`: the same on REAL IMF PortWatch data"]
+              "- `eval_real_*`: the same on REAL IMF PortWatch data",
+              "- `eval_backtest_folds.csv`, `eval_backtest_summary.csv`, `eval_backtest_warning.csv`: rolling-origin folds",
+              "- `eval_seed_runs.csv`, `eval_seed_summary.csv`: the same models trained with 3 seeds"]
     path.write_text("\n".join(lines) + "\n")
 
 
@@ -735,7 +853,7 @@ def main() -> int:
         alerts_by_model["stage1_risk"] = s1["test"]
     chosen = visual_benchmark(grid, keys, wide, thr, onsets, alerts_by_model, out_dir / "eval_visual_benchmark.png")
     bench = lead[(lead["split"] == "test") & lead["chosen_on_val"]
-                 & lead["model"].isin(["persistence", "xgb_lag", "lstm", "transformer", "graph_full", "stage1_risk"])]
+                 & lead["model"].isin(["persistence", "xgb_lag", "lstm", "transformer", "ensemble", "graph_full", "stage1_risk"])]
     bench.to_csv(out_dir / "eval_visual_benchmark.csv", index=False)
     (out_dir / "eval_visual_benchmark.md").write_text(
         "# Visual prediction benchmark (test)\n\nBaseline ML detection (`xgb_lag`; `stage1_risk` = Stage 1 champion's shipment "
@@ -746,7 +864,7 @@ def main() -> int:
     # Step 6: slices, Diebold-Mariano tests, leakage file.
     slices(keys, wide, y, ok, c).to_csv(out_dir / "eval_slices.csv", index=False)
     dm = {}
-    for other in ("persistence", "xgb_lag", "graph_none", "lstm"):
+    for other in ("persistence", "xgb_lag", "transformer", "graph_none", "lstm"):
         if other in wide and other != c:
             for h in (24, 168):
                 sel = ((keys["split"] == "test") & (keys["target"] == "dwell") & (keys["horizon_h"] == h)).to_numpy() & ok
@@ -757,6 +875,23 @@ def main() -> int:
 
     # Step 7: the real track.
     real = real_track(args.real_predictions, args.n_boot, out_dir, c)
+
+    # Step 9: rolling-origin backtest folds (Role 1), if they exist.
+    folds = backtest_folds(args.backtest, grid, thr, onsets, inside, args.n_boot, miss_cost, fa_cost)
+    if folds:
+        folds[0].to_csv(out_dir / "eval_backtest_folds.csv", index=False)
+        folds[1].to_csv(out_dir / "eval_backtest_summary.csv", index=False)
+        folds[2].to_csv(out_dir / "eval_backtest_warning.csv", index=False)
+        print("backtest folds done")
+
+    # Step 10: seed variance (Role 1's extra seeds), if they exist.
+    seeds = seed_study(args.seed_runs, df, keys, ok)
+    seed_v = None
+    if seeds:
+        seeds[0].to_csv(out_dir / "eval_seed_runs.csv", index=False)
+        seeds[1].to_csv(out_dir / "eval_seed_summary.csv", index=False)
+        seed_v = seed_verdict(seeds[0], c)
+        print("seed variance done")
 
     # Headline numbers (champion, test) and honest notes.
     def acc_row(model, target, h, split="test"):
@@ -779,12 +914,30 @@ def main() -> int:
         "median_lead_h": f"{lead_c.median_lead_h:.0f} [{lead_c.q25_lead_h:.0f}, {lead_c.q75_lead_h:.0f}]",
         "alert_rule_chosen_on_val": str(lead_c.rule),
         "warning_cost_test": f"{c} {lead_c.warning_cost:.0f} vs " + ", ".join(
-            f"{m} {test_chosen.loc[m, 'warning_cost']:.0f}" for m in ("lstm", "xgb_lag", "persistence", "stage1_risk") if m in test_chosen.index and m != c),
+            f"{m} {test_chosen.loc[m, 'warning_cost']:.0f}" for m in ("transformer", "lstm", "xgb_lag", "persistence", "stage1_risk")
+            if m in test_chosen.index and m != c),
         "false_alarms_per_node_week": f"{lead_c.false_alarms_per_node_week:.2f}",
         "coverage_dwell": f"{cov:.3f}",
         "ablation_vs_none": f"better in {abl_none.get('graph_full_better')}/{abl_none.get('cells')}, worse in {abl_none.get('graph_full_worse')}",
         "ablation_vs_shuffled": f"better in {abl_shuf.get('graph_full_better')}/{abl_shuf.get('cells')}, worse in {abl_shuf.get('graph_full_worse')}",
     }
+    if folds:
+        fs = folds[1].set_index(["model", "target", "horizon_h"])
+        fw = folds[2].set_index("model")
+        cm_ = c if (c, "dwell", 24) in fs.index else "transformer"
+        r = fs.loc[(cm_, "dwell", 24)]
+        headline["backtest_skill_dwell_24h"] = (f"{cm_} {r['mean']:.3f} (sd {r['sd']:.3f}, range {r['min']:.3f} to {r['max']:.3f}, "
+                                                f"{int(r['folds'])} folds) vs xgb_lag {fs.loc[('xgb_lag', 'dwell', 24), 'mean']:.3f}")
+        headline["backtest_warning"] = "; ".join(
+            f"{m} {fw.loc[m, 'n_caught']:.0f}/{fw.loc[m, 'n_episodes']:.0f} caught, cost {fw.loc[m, 'warning_cost']:.0f}"
+            for m in dict.fromkeys((cm_, "transformer", "xgb_lag", "persistence")) if m in fw.index)
+    if seed_v:
+        sp = seeds[1].set_index(["model", "split", "target", "horizon_h"])
+        r = sp.loc[(c, "test", "dwell", 24)]
+        headline["seed_skill_dwell_24h"] = (f"{c} {r['mean']:.3f} (sd {r['sd']:.3f}, range {r['min']:.3f} to {r['max']:.3f}, "
+                                            f"{int(r['seeds'])} seeds)")
+        headline["seed_lead_over_xgb_dwell_24h"] = (f"{seed_v['champion_lead_min']:+.3f} to {seed_v['champion_lead_max']:+.3f} "
+                                                    f"({'positive for every seed' if seed_v['lead_positive_every_seed'] else 'NOT positive for every seed'})")
     if real:
         rp = real["horizons_with_ci_positive_skill"]
         headline["real_positive_skill"] = f"{c} {rp.get(c, 0)}/{real['n_horizons']} horizons (CI above 0)"
@@ -801,6 +954,17 @@ def main() -> int:
                      f"vs graph_shuffled {headline['ablation_vs_shuffled']} (target x horizon cells, paired 95% CI). That is a finding, not a failure.")
     if real and real["ablation_vs_none"].get("graph_full_better", 0) == 0:
         notes.append("- The graph does not help on the REAL track either (eval_real_graph_ablation.csv).")
+    if seed_v:
+        notes.append(f"- **Seed check:** retrained with {len(seed_v['by_seed'])} seeds, {c}'s test skill at 24 h (dwell) is "
+                     f"{headline['seed_skill_dwell_24h']}; its lead over xgb_lag ranges {headline['seed_lead_over_xgb_dwell_24h']}. "
+                     + ("Validation picks the same model for every seed: " if seed_v["same_val_pick_every_seed"] else
+                        "Validation does NOT pick the same model for every seed, so the choice between those models is "
+                        "within seed noise: ")
+                     + ", ".join(f"seed {k}: {v['val_pick']}" for k, v in seed_v["by_seed"].items()) + ".")
+    if folds:
+        notes.append(f"- **Backtest (3 rolling-origin folds, Jun-Aug):** skill at 24 h (dwell) {headline['backtest_skill_dwell_24h']}. "
+                     f"Early warning pooled over the folds (rule A; {int(folds[2]['n_episodes'].max())} episodes, separate from the "
+                     f"{int(lead_c.n_episodes)} test episodes): {headline['backtest_warning']}.")
     if "-fast" in champion["model_version"]:
         notes.append("- These numbers come from the --fast training run (hidden 32, <= 10 epochs); claims stay PENDING until the full run.")
     max_skill = float(t["skill_vs_persistence"].max())
@@ -811,7 +975,8 @@ def main() -> int:
                "p_star_by_model": p_star, "episode_threshold": f"node p{EPISODE_PCT} of TRAIN dwell", "lookback_h": LOOKBACK_H,
                "n_test_episodes_eligible": int(lead_c.n_episodes), "graph_ablation": {"vs_none": abl_none, "vs_shuffled": abl_shuf},
                "positive_skill_horizons_by_model": {f"{m}|{tg}": int(v) for (m, tg), v in pos.items()},
-               "real_track": real, "honest_notes": notes, "n_boot": args.n_boot}
+               "real_track": real, "honest_notes": notes, "n_boot": args.n_boot, "seed_study": seed_v,
+               "backtest": {"pooled_warning": folds[2].to_dict("records")} if folds else None}
     (out_dir / "eval_metrics.json").write_text(json.dumps(metrics, indent=2, default=str))
     write_report(out_dir / "eval_report.md", metrics, acc, lead, abl_none, chosen)
     print(json.dumps(headline, indent=2))

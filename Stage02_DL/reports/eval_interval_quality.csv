@@ -1,4 +1,5 @@
 split,model,target,horizon_h,coverage_80,mean_width,interval_score,pinball_q50
+val,ensemble,dwell,1,0.80025,6.97129,9.47445,1.07854
 val,graph_full,dwell,1,0.80025,8.02375,10.92513,1.22658
 val,graph_none,dwell,1,0.80025,7.70404,10.38004,1.17607
 val,graph_shuffled,dwell,1,0.8005,7.86564,10.72957,1.2121
@@ -8,6 +9,7 @@ val,rolling_mean,dwell,1,0.80025,9.805,13.50207,1.49499
 val,seasonal_naive,dwell,1,0.80025,22.06889,32.87905,3.5592
 val,transformer,dwell,1,0.80075,7.11112,9.71608,1.103
 val,xgb_lag,dwell,1,0.80025,7.03184,9.51007,1.07572
+val,ensemble,dwell,6,0.80035,9.14862,12.57416,1.39657
 val,graph_full,dwell,6,0.80086,9.69656,13.36215,1.47665
 val,graph_none,dwell,6,0.80035,9.46086,13.05306,1.45568
 val,graph_shuffled,dwell,6,0.80035,9.53148,13.25048,1.47205
@@ -17,6 +19,7 @@ val,rolling_mean,dwell,6,0.80035,11.24581,15.73154,1.75605
 val,seasonal_naive,dwell,6,0.80035,22.09879,33.31446,3.54391
 val,transformer,dwell,6,0.8006,9.24322,12.59465,1.4054
 val,xgb_lag,dwell,6,0.80035,9.32662,12.82698,1.41479
+val,ensemble,dwell,24,0.8004,12.51748,17.44619,1.9465
 val,graph_full,dwell,24,0.80065,12.91113,17.90054,1.97399
 val,graph_none,dwell,24,0.8004,12.9015,17.88828,1.9875
 val,graph_shuffled,dwell,24,0.8004,12.91349,17.94517,2.00083
@@ -26,6 +29,7 @@ val,rolling_mean,dwell,24,0.80065,14.49514,20.53509,2.24662
 val,seasonal_naive,dwell,24,0.80065,22.13996,33.3239,3.54202
 val,transformer,dwell,24,0.8004,12.71028,17.49291,1.95223
 val,xgb_lag,dwell,24,0.8004,12.86629,17.88123,1.99045
+val,ensemble,dwell,72,0.8002,16.50914,23.11732,2.55156
 val,graph_full,dwell,72,0.8002,16.68895,23.29549,2.53443
 val,graph_none,dwell,72,0.8002,16.74209,23.3188,2.5865
 val,graph_shuffled,dwell,72,0.8002,16.39803,23.37049,2.56546
@@ -35,6 +39,7 @@ val,rolling_mean,dwell,72,0.8002,19.13481,27.37019,3.00532
 val,seasonal_naive,dwell,72,0.8002,22.43557,33.70804,3.56422
 val,transformer,dwell,72,0.80045,16.4536,22.94478,2.56374
 val,xgb_lag,dwell,72,0.8002,17.01144,23.97271,2.60068
+val,ensemble,dwell,168,0.8002,18.90977,26.65807,2.95106
 val,graph_full,dwell,168,0.8002,18.90499,27.09658,2.92823
 val,graph_none,dwell,168,0.8002,18.89271,26.61057,2.9283
 val,graph_shuffled,dwell,168,0.8002,18.58007,26.57059,2.90743
@@ -44,6 +49,7 @@ val,rolling_mean,dwell,168,0.8002,21.8108,32.47399,3.42696
 val,seasonal_naive,dwell,168,0.8002,23.18071,34.16824,3.60861
 val,transformer,dwell,168,0.8002,18.99767,26.56535,2.94733
 val,xgb_lag,dwell,168,0.8002,19.42881,27.82169,3.01593
+val,ensemble,throughput,1,0.80025,81.43935,111.67435,12.71511
 val,graph_full,throughput,1,0.80025,82.43706,115.90504,13.02733
 val,graph_none,throughput,1,0.80025,82.48161,115.06843,12.90107
 val,graph_shuffled,throughput,1,0.80025,82.42222,115.19775,12.98539
@@ -53,6 +59,7 @@ val,rolling_mean,throughput,1,0.80025,89.66475,125.53265,14.22398
 val,seasonal_naive,throughput,1,0.80025,140.80726,201.86949,22.53954
 val,transformer,throughput,1,0.80025,81.2313,112.6195,12.77483
 val,xgb_lag,throughput,1,0.80025,82.37124,112.38655,12.77449
+val,ensemble,throughput,6,0.80035,85.96802,124.46533,13.80847
 val,graph_full,throughput,6,0.80035,85.232,127.1586,14.0071
 val,graph_none,throughput,6,0.80035,84.68716,127.04326,13.95826
 val,graph_shuffled,throughput,6,0.80035,85.6313,126.74017,13.95799
@@ -62,6 +69,7 @@ val,rolling_mean,throughput,6,0.80035,94.3649,132.65654,14.79857
 val,seasonal_naive,throughput,6,0.80035,147.32235,203.11906,22.73361
 val,transformer,throughput,6,0.80035,85.56448,124.6064,13.88078
 val,xgb_lag,throughput,6,0.80035,86.37934,125.86698,13.86492
+val,ensemble,throughput,24,0.8004,95.37136,135.14728,15.28701
 val,graph_full,throughput,24,0.8004,96.20177,136.87581,15.37586
 val,graph_none,throughput,24,0.8004,95.82235,136.73613,15.37758
 val,graph_shuffled,throughput,24,0.8004,95.52246,137.2272,15.46618
@@ -71,6 +79,7 @@ val,rolling_mean,throughput,24,0.8004,102.3603,141.39814,16.00265
 val,seasonal_naive,throughput,24,0.8004,147.74582,204.71637,22.86447
 val,transformer,throughput,24,0.8004,95.83555,136.42409,15.43031
 val,xgb_lag,throughput,24,0.8004,97.13561,135.90673,15.29558
+val,ensemble,throughput,72,0.8002,104.9476,147.04415,16.59692
 val,graph_full,throughput,72,0.80045,104.42567,147.2424,16.55588
 val,graph_none,throughput,72,0.80045,105.79357,147.98599,16.60098
 val,graph_shuffled,throughput,72,0.8002,104.63731,147.48078,16.62138
@@ -80,6 +89,7 @@ val,rolling_mean,throughput,72,0.8002,114.36256,156.53638,17.56568
 val,seasonal_naive,throughput,72,0.8002,148.0177,206.29736,22.92403
 val,transformer,throughput,72,0.8002,105.88786,148.93069,16.77446
 val,xgb_lag,throughput,72,0.8002,106.03529,147.72608,16.65962
+val,ensemble,throughput,168,0.8002,114.57682,157.55413,17.49543
 val,graph_full,throughput,168,0.8002,114.32836,157.0428,17.51906
 val,graph_none,throughput,168,0.8002,113.72475,156.7975,17.47028
 val,graph_shuffled,throughput,168,0.8002,112.76886,157.51393,17.60508
@@ -89,6 +99,7 @@ val,rolling_mean,throughput,168,0.8002,123.725,171.90974,18.78652
 val,seasonal_naive,throughput,168,0.8002,149.64689,207.1693,23.25295
 val,transformer,throughput,168,0.8002,113.71682,159.5984,17.73032
 val,xgb_lag,throughput,168,0.8002,116.48231,158.79587,17.57841
+test,ensemble,dwell,1,0.79693,7.07102,9.77359,1.09805
 test,graph_full,dwell,1,0.7952,8.15545,11.50243,1.28282
 test,graph_none,dwell,1,0.79198,7.80942,10.89169,1.22073
 test,graph_shuffled,dwell,1,0.78851,7.97563,11.306,1.25458
@@ -98,6 +109,7 @@ test,rolling_mean,dwell,1,0.79668,9.802,14.12437,1.53805
 test,seasonal_naive,dwell,1,0.73824,22.06161,38.96829,3.95751
 test,transformer,dwell,1,0.79222,7.15828,9.98756,1.1224
 test,xgb_lag,dwell,1,0.79742,7.18429,9.86252,1.09663
+test,ensemble,dwell,6,0.79396,9.23691,12.92593,1.42707
 test,graph_full,dwell,6,0.78259,9.84836,14.09849,1.55399
 test,graph_none,dwell,6,0.78778,9.57179,13.50379,1.49479
 test,graph_shuffled,dwell,6,0.78234,9.64261,13.93041,1.53301
@@ -107,6 +119,7 @@ test,rolling_mean,dwell,6,0.79223,11.23702,16.39094,1.78593
 test,seasonal_naive,dwell,6,0.75043,22.08166,38.36174,3.90095
 test,transformer,dwell,6,0.79743,9.26118,12.89613,1.43228
 test,xgb_lag,dwell,6,0.79644,9.48484,13.23727,1.44258
+test,ensemble,dwell,24,0.795,12.70077,18.2037,2.01769
 test,graph_full,dwell,24,0.78536,13.19513,18.8652,2.07486
 test,graph_none,dwell,24,0.79649,13.1073,18.37333,2.0317
 test,graph_shuffled,dwell,24,0.79426,13.13289,18.76682,2.05535
@@ -116,6 +129,7 @@ test,rolling_mean,dwell,24,0.79797,14.48414,21.21376,2.28412
 test,seasonal_naive,dwell,24,0.75099,22.12368,38.27701,3.89002
 test,transformer,dwell,24,0.795,12.80519,18.22016,2.00313
 test,xgb_lag,dwell,24,0.79426,13.13721,18.71735,2.09595
+test,ensemble,dwell,72,0.79797,16.86198,24.6554,2.66528
 test,graph_full,dwell,72,0.80786,17.10116,24.84183,2.65564
 test,graph_none,dwell,72,0.81553,17.0519,24.43551,2.6029
 test,graph_shuffled,dwell,72,0.80267,16.72868,24.73943,2.63747
@@ -125,6 +139,7 @@ test,rolling_mean,dwell,72,0.8044,19.12024,29.05844,3.03934
 test,seasonal_naive,dwell,72,0.75223,22.42186,38.09935,3.89481
 test,transformer,dwell,72,0.795,16.6957,24.53504,2.67341
 test,xgb_lag,dwell,72,0.7997,17.47447,25.55368,2.73765
+test,ensemble,dwell,168,0.80874,19.28048,26.90281,2.9504
 test,graph_full,dwell,168,0.80281,19.44057,27.84713,3.05742
 test,graph_none,dwell,168,0.80972,19.27496,27.05775,2.96192
 test,graph_shuffled,dwell,168,0.8075,18.9766,27.26973,2.95288
@@ -134,6 +149,7 @@ test,rolling_mean,dwell,168,0.7732,21.81006,35.67841,3.65525
 test,seasonal_naive,dwell,168,0.77715,23.1825,37.39438,3.83622
 test,transformer,dwell,168,0.81293,19.36178,27.01008,2.98532
 test,xgb_lag,dwell,168,0.80652,19.80585,27.8118,2.99099
+test,ensemble,throughput,1,0.79866,84.43816,115.58261,13.1239
 test,graph_full,throughput,1,0.79767,85.65424,123.45437,14.24193
 test,graph_none,throughput,1,0.80312,85.66164,120.91991,13.77095
 test,graph_shuffled,throughput,1,0.79891,85.39178,121.88141,13.90251
@@ -143,6 +159,7 @@ test,rolling_mean,throughput,1,0.79297,89.40476,125.51017,14.10285
 test,seasonal_naive,throughput,1,0.74666,140.40762,258.84989,26.49221
 test,transformer,throughput,1,0.79544,83.04695,116.01885,13.24671
 test,xgb_lag,throughput,1,0.7999,86.55152,117.61111,13.18681
+test,ensemble,throughput,6,0.8004,88.61832,125.11287,13.70996
 test,graph_full,throughput,6,0.791,88.86439,131.45725,14.61779
 test,graph_none,throughput,6,0.79025,88.2203,129.6083,14.28461
 test,graph_shuffled,throughput,6,0.79619,88.94854,129.74226,14.31683
@@ -152,6 +169,7 @@ test,rolling_mean,throughput,6,0.80361,94.32641,134.74625,14.60675
 test,seasonal_naive,throughput,6,0.77442,147.2659,252.03685,25.71951
 test,transformer,throughput,6,0.79842,87.51492,123.9729,13.72529
 test,xgb_lag,throughput,6,0.79644,89.72948,127.6375,13.92185
+test,ensemble,throughput,24,0.79674,99.50268,143.32328,15.8313
 test,graph_full,throughput,24,0.80094,100.40552,149.79676,16.51991
 test,graph_none,throughput,24,0.79847,99.95172,147.34215,16.12683
 test,graph_shuffled,throughput,24,0.79624,99.39963,147.92465,16.25435
@@ -161,6 +179,7 @@ test,rolling_mean,throughput,24,0.78932,102.32084,152.70392,16.37745
 test,seasonal_naive,throughput,24,0.77423,147.68791,251.78251,25.68426
 test,transformer,throughput,24,0.79525,98.62184,142.90291,15.80579
 test,xgb_lag,throughput,24,0.80242,102.6106,146.5178,16.10384
+test,ensemble,throughput,72,0.78981,110.36373,171.14449,18.52416
 test,graph_full,throughput,72,0.78388,109.12675,173.87623,18.60788
 test,graph_none,throughput,72,0.79698,110.68424,170.14945,18.19956
 test,graph_shuffled,throughput,72,0.79055,109.24071,171.38552,18.31705
@@ -170,6 +189,7 @@ test,rolling_mean,throughput,72,0.7908,114.40909,185.82331,19.4138
 test,seasonal_naive,throughput,72,0.77671,148.07064,252.65838,25.85159
 test,transformer,throughput,72,0.79006,109.85474,171.85602,18.41243
 test,xgb_lag,throughput,72,0.78783,112.90101,174.35491,18.99539
+test,ensemble,throughput,168,0.80109,119.25596,185.07769,19.70858
 test,graph_full,throughput,168,0.79862,119.01842,188.0206,19.9683
 test,graph_none,throughput,168,0.80109,118.97944,182.73761,19.58175
 test,graph_shuffled,throughput,168,0.80232,117.917,181.99903,19.44457
