@@ -20,6 +20,12 @@ data_version: v1 (sim) + real track v1
 - `Stage02_DL/artifacts/xgb_lag_{sim,real}.joblib` (6.4 MB / 1.4 MB), `training_curve.csv`, `model_card.json` (val metrics only, parameter counts, settings, full run mode: run_seconds 1526.0s, champion proposal: transformer)
 - New shared code: `common/modelkit/dl_data.py` (batches, splits, lanes, flexible spec), `dl_models.py` (LSTM, Transformer, GraphForecaster), `dl_train.py` (training, baselines, XGBoost, conformal, output), `dl_infer.py` (load + exact preprocessing for the API and Role 2)
 
+- Added on 2 Nov 2026 by Role 4 at the team lead's request (Santhosh to review), no retraining of the hand-off models:
+  - `ensemble` model = mean of the transformer's and xgb_lag's quantiles, with its own split-conformal margins on VAL. Built by `python 03_dl_engineer.py --add-ensemble` from the SAVED models (the saved transformer reproduces its rows in the file with max difference 0). Rows added to `dl_forecasts.csv.gz` (81,000) and `dl_real_forecasts.csv.gz` (58,926); description + margins in `artifacts/ensemble_forecaster.json` and `real_ensemble_forecaster.json`. A full run now trains it automatically (step 4b of `run_track`).
+  - `python 03_dl_engineer.py --seeds 7 13`: seed-variance study (xgb_lag, lstm, transformer + their ensemble, simulated track, full settings). Models go to `artifacts/scratch/`; forecasts to `predictions/dl_seed_runs.csv.gz` (column `seed`). `--seed N` sets the seed of a single (partial) run. `train_xgb_lag` takes a `seed` argument.
+  - `common/modelkit/dl_infer.py`: `EnsembleForecaster` (same interface as `Stage2Forecaster`) so the API can serve the ensemble.
+  - The noise-check model `artifacts/noise_check/lstm_noise.pt` is now committed (needed by Role 2's noise-channel test from a clean clone).
+
 ## Contract check (paste the output of `python scripts/validate_contract.py <schema> <file>`)
 ```
 PASS  Stage02_DL/predictions/dl_forecasts.csv.gz  (729000 rows, schema 'dl_forecasts')

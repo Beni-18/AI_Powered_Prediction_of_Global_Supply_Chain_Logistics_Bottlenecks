@@ -9,6 +9,8 @@ WHAT THIS SCRIPT DOES
         neural     lstm (shared LSTM + node embedding), transformer (encoder, 2 layers x 4 heads),
                    graph_full (LSTM + graph convolution + transit-delayed lane messages),
                    graph_shuffled (same model, lanes relabelled at random), graph_none (same model, no lanes)
+        ensemble   average of the transformer's and xgb_lag's quantiles (a DL + ML combination), with its own
+                   split-conformal correction on VAL
     Real track (daily IMF PortWatch ship counts, 23 nodes, horizons 1/3/7 days): the same models, when the data
         engineer has built Stage02_DL/data/real_daily_activity.csv.gz.
     Every model is fitted on TRAIN, early-stopped on VAL, gets the same split-conformal interval correction on VAL,
@@ -20,13 +22,19 @@ READS : Stage02_DL/data/hourly_node_telemetry.csv.gz, scaler.json, splits.json  
 WRITES: Stage02_DL/predictions/dl_forecasts.csv.gz        (contract dl_forecasts, simulated track)
         Stage02_DL/predictions/dl_real_forecasts.csv.gz   (same columns, real track, target = activity)
         Stage02_DL/artifacts/*.pt (weights + config + interval margins), xgb_lag_*.joblib,
-        Stage02_DL/artifacts/model_card.json, training_curve.csv
+        Stage02_DL/artifacts/model_card.json, training_curve.csv, ensemble_forecaster.json (+ real_)
+        Stage02_DL/predictions/dl_seed_runs.csv.gz        (--seeds only: the same models trained with other seeds)
 
 RUN   : python 03_dl_engineer.py --fast      (from Stage02_DL/; about 10 min on a laptop CPU: hidden 32, <= 10 epochs)
         python 03_dl_engineer.py             (full run: hidden 64, <= 30 epochs; ~45-60 min on CPU)
         Partial runs (--models / --epochs / --track sim|real) write to artifacts/scratch/ and predictions/scratch/ only.
         python 03_dl_engineer.py --noise-channel   (Role 2's sanity test: trains one LSTM with 2 extra noise inputs,
                                                     saves artifacts/noise_check/lstm_noise.pt, writes no forecasts)
+        python 03_dl_engineer.py --add-ensemble    (builds the ensemble from the SAVED transformer and xgb_lag models,
+                                                    no retraining, and adds its rows to both forecast files; ~1 min)
+        python 03_dl_engineer.py --seeds 7 13      (seed-variance study: retrains xgb_lag, lstm and transformer on the
+                                                    simulated track with each seed; models go to artifacts/scratch/,
+                                                    forecasts to predictions/dl_seed_runs.csv.gz; ~20 min per seed)
 """
 
 import os
@@ -57,10 +65,10 @@ from common.modelkit.dl_data import (  # noqa: E402
     SIM_TRACK, ForecastData, real_data_from_grid, shuffle_permutation, sim_data_from_grid, split_origins,
     symmetric_adjacency, transit_edges,
 )
-from common.modelkit.dl_models import build_model, count_parameters, save_model  # noqa: E402
+from common.modelkit.dl_models import build_model, count_parameters, load_model, save_model  # noqa: E402
 from common.modelkit.dl_train import (  # noqa: E402
-    apply_margins, conformal_margins, long_frame, naive_point, predict_scaled, predict_xgb_lag, residual_quantiles,
-    train_neural, train_xgb_lag, val_pinball, with_residual_band,
+    apply_margins, conformal_margins, ensemble_quantiles, long_frame, naive_point, predict_scaled, predict_xgb_lag,
+    residual_quantiles, train_neural, train_xgb_lag, val_pinball, with_residual_band,
 )
 from common.paths import EDGES_CSV, NODES_CSV, stage_path  # noqa: E402
 from common.seed import SEED, set_global_seed  # noqa: E402
@@ -71,6 +79,10 @@ THREADS = 4                          # CPU threads for PyTorch and XGBoost (a ty
 SIM_EVAL_HOURS = (0, 6, 12, 18)      # role file: val/test forecast origins every 6 hours
 BASELINES = ("persistence", "seasonal_naive", "rolling_mean")
 NEURAL = ("lstm", "transformer", "graph_full", "graph_shuffled", "graph_none")
+# The ensemble averages one deep-learning and one machine-learning forecaster: on validation the transformer is
+# best at 1-7 days and xgb_lag at 1 hour, so their average can keep the strengths of both.
+ENSEMBLE_MEMBERS = ("transformer", "xgb_lag")
+SEED_STUDY_MODELS = ("xgb_lag", "lstm", "transformer", "ensemble")
 # Where outputs go. A PARTIAL run (--models, --epochs or one --track only) writes to scratch/ sub-folders
 # (git-ignored), so a quick experiment can never overwrite the complete, committed hand-off files.
 SCRATCH = {"on": False}
@@ -124,6 +136,9 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--input-len", type=int, default=None, help="override input window steps for sim track (default 72)")
     ap.add_argument("--tag", type=str, default=None, help="experiment label for artifacts/hparam_log.csv")
     ap.add_argument("--fold", type=int, choices=[1, 2, 3], default=None, help="rolling-origin backtest fold (1, 2, or 3)")
+    ap.add_argument("--seed", type=int, default=SEED, help="random seed for the neural models and XGBoost (default 42)")
+    ap.add_argument("--seeds", type=int, nargs="+", default=None, help="seed-variance study: retrain with each seed")
+    ap.add_argument("--add-ensemble", action="store_true", help="build the ensemble from the saved models (no retraining)")
     return ap.parse_args()
 
 
@@ -193,7 +208,7 @@ def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) ->
         return None
     s = settings(args.fast, track, args.epochs, hidden=args.hidden)
     spec = data.spec
-    wanted = args.models or list(BASELINES) + ["xgb_lag"] + list(NEURAL)
+    wanted = args.models or list(BASELINES) + ["xgb_lag"] + list(NEURAL) + ["ensemble"]
     print(f"\n=== {track} track: {data.n_nodes} nodes, {len(data.times)} steps of {spec.step_hours} h, "
           f"horizons {spec.horizons} steps ===")
 
@@ -223,7 +238,7 @@ def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) ->
     if "xgb_lag" in wanted:
         print("training xgb_lag ...")
         t0 = time.time()
-        xgb_bundle = train_xgb_lag(data, train_o, val_o, n_estimators=s["xgb_trees"], n_jobs=THREADS)
+        xgb_bundle = train_xgb_lag(data, train_o, val_o, n_estimators=s["xgb_trees"], n_jobs=THREADS, seed=args.seed)
         forecasts["xgb_lag"] = {sp: predict_xgb_lag(xgb_bundle, data, o) for sp, o in (("val", val_o), ("test", test_o))}
         joblib.dump(xgb_bundle, out_path("artifacts", f"xgb_lag_{track}.joblib"), compress=3)
         info["xgb_lag"] = {"kind": "xgboost", "train_seconds": round(time.time() - t0, 1),
@@ -234,7 +249,7 @@ def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) ->
     for name in NEURAL:
         if name not in wanted:
             continue
-        set_global_seed(SEED)
+        set_global_seed(args.seed)
         kind, cfg = model_config(name, data, edges, s)
         model = build_model(kind, cfg)
         print(f"training {name} ({count_parameters(model):,} parameters) ...")
@@ -277,6 +292,12 @@ def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) ->
         info[name]["artifact"] = f"Stage02_DL/artifacts/{prefix}{ARTIFACT_NAMES[name]}.pt"
         trained[name] = (model, out_path("artifacts", f"{prefix}{ARTIFACT_NAMES[name]}.pt"), kind, cfg)
 
+    # Step 4b: the ensemble = the average of the members' raw quantiles (before any conformal correction).
+    if "ensemble" in wanted and all(m in forecasts for m in ENSEMBLE_MEMBERS):
+        forecasts["ensemble"] = {sp: ensemble_quantiles([forecasts[m][sp] for m in ENSEMBLE_MEMBERS]) for sp in ("val", "test")}
+        info["ensemble"] = {"kind": "ensemble", "members": list(ENSEMBLE_MEMBERS),
+                            "parameters": sum(info[m].get("parameters", 0) for m in ENSEMBLE_MEMBERS)}
+
     # Step 5: one split-conformal correction per model on VAL, then the long-format rows for val and test.
     frames = []
     for name, by_split in forecasts.items():
@@ -289,6 +310,8 @@ def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) ->
             frames.append(long_frame(data, origins, q, sp, name, MODEL_VERSION + ("-fast" if args.fast else "")))
         # Val-only accuracy for the model card (MAE of the median in reported units, by horizon).
         info[name]["val_mae_by_horizon"] = _val_mae(data, by_split["val"], val_o, mask_val)
+        if name == "ensemble":
+            save_ensemble(track, margins, data, MODEL_VERSION + ("-fast" if args.fast else ""))
         if name in trained:
             # Save weights + config + the interval margins, so the API and Role 2 rebuild exactly this model.
             model, path, kind, cfg = trained[name]
@@ -302,6 +325,84 @@ def run_track(track: str, args: argparse.Namespace, card: dict, curves: list) ->
                              "origins": {"train": int(len(train_o)), "val": int(len(val_o)), "test": int(len(test_o))},
                              "input_channels": data.input_channel_names, "models": info}
     return pd.concat(frames, ignore_index=True)
+
+
+def save_ensemble(track: str, margins: np.ndarray, data: ForecastData, version: str) -> None:
+    """Write artifacts/[real_]ensemble_forecaster.json: which saved models to average and the ensemble's own margins."""
+    prefix = "" if track == "sim" else "real_"
+    bundle = {"kind": "ensemble", "model_name": "ensemble", "model_version": version, "track": track,
+              "members": {"transformer": f"{prefix}{ARTIFACT_NAMES['transformer']}", "xgb_lag": f"xgb_lag_{track}.joblib"},
+              "combine": "mean of the members' scaled q10/q50/q90, then sorted",
+              "conformal_margin_scaled": np.round(margins, 6).tolist(), "targets": data.target_names,
+              "horizons_steps": list(data.spec.horizons), "step_hours": data.spec.step_hours, "node_ids": data.node_ids,
+              "scaler_file": "Stage02_DL/data/scaler.json" if track == "sim" else "Stage02_DL/data/real_scaler.json"}
+    out_path("artifacts", f"{prefix}ensemble_forecaster.json").write_text(json.dumps(bundle, indent=2))
+
+
+def add_ensemble() -> int:
+    """Build the ensemble from the SAVED transformer and xgb_lag models (no retraining) and add it to the forecast files.
+
+    The saved models give exactly the forecasts already in the files (checked below), so the ensemble is what a full
+    run with the ensemble step would have produced.
+    """
+    for track, fname in (("sim", "dl_forecasts.csv.gz"), ("real", "dl_real_forecasts.csv.gz")):
+        data, bounds, _ = load_track(track)
+        path = stage_path(STAGE, "predictions", fname)
+        if data is None or not path.exists():
+            print(f"[{track}] skipped: no data or no forecast file")
+            continue
+        prefix = "" if track == "sim" else "real_"
+        model, bundle = load_model(stage_path(STAGE, "artifacts", f"{prefix}{ARTIFACT_NAMES['transformer']}.pt"))
+        xgb_bundle = joblib.load(stage_path(STAGE, "artifacts", f"xgb_lag_{track}.joblib"))
+        version = bundle.get("meta", {}).get("model_version", MODEL_VERSION)
+        eval_o = split_origins(data.times, data.spec, bounds, origin_hours=SIM_EVAL_HOURS if track == "sim" else None)
+        raw = {sp: {"transformer": predict_scaled(model, data, eval_o[sp]), "xgb_lag": predict_xgb_lag(xgb_bundle, data, eval_o[sp])}
+               for sp in ("val", "test")}
+        old = pd.read_csv(path)
+        # Check: the saved transformer, with its stored margins, reproduces the transformer rows already in the file.
+        stored = np.asarray(bundle["meta"]["conformal_margin_scaled"])
+        check = long_frame(data, eval_o["test"], to_reported_units(data, apply_margins(raw["test"]["transformer"], stored)),
+                           "test", "transformer", version)
+        ref = old[(old["model_name"] == "transformer") & (old["split"] == "test")]
+        key = ["node_id", "origin_ts", "horizon_h", "target"]
+        merged = check.merge(ref, on=key, suffixes=("", "_file"))
+        gap = float(np.abs(merged["y_pred"] - merged["y_pred_file"]).max())
+        print(f"[{track}] saved transformer reproduces the file: max |difference| = {gap:.2e} over {len(merged):,} rows")
+        if gap > 1e-3:
+            raise SystemExit(f"[{track}] the saved transformer does not reproduce the forecast file; retrain instead.")
+        # The ensemble with its own conformal correction on VAL, exactly as in run_track.
+        q = {sp: ensemble_quantiles([raw[sp][m] for m in ENSEMBLE_MEMBERS]) for sp in ("val", "test")}
+        margins = conformal_margins(q["val"], data.batch(eval_o["val"])["y"], ~data.target_imputed(eval_o["val"]))
+        rows = [long_frame(data, eval_o[sp], to_reported_units(data, apply_margins(q[sp], margins)), sp, "ensemble", version)
+                for sp in ("val", "test")]
+        out = pd.concat([old[old["model_name"] != "ensemble"], *rows], ignore_index=True)
+        if track == "sim":
+            write_validated_csv(out, "dl_forecasts", path)
+        else:
+            out.to_csv(path, index=False)
+        save_ensemble(track, margins, data, version)
+        print(f"[{track}] added {sum(len(r) for r in rows):,} ensemble rows -> {path}")
+    return 0
+
+
+def run_seeds(args: argparse.Namespace) -> int:
+    """Seed-variance study: retrain xgb_lag, lstm and transformer (+ their ensemble) with other seeds, simulated track.
+
+    Models go to artifacts/scratch/ (they never replace the hand-off models); the val + test forecasts of every seed
+    are collected in predictions/dl_seed_runs.csv.gz so Role 4 can measure how much results move with the seed.
+    """
+    SCRATCH["on"] = True
+    frames = []
+    for seed in args.seeds:
+        print(f"\n##### seed {seed} #####")
+        run_args = argparse.Namespace(**{**vars(args), "seed": seed, "models": list(SEED_STUDY_MODELS)})
+        card = {"tracks": {}}
+        out = run_track("sim", run_args, card, [])
+        frames.append(out.assign(seed=seed))
+    path = stage_path(STAGE, "predictions", "dl_seed_runs.csv.gz")
+    pd.concat(frames, ignore_index=True).to_csv(path, index=False)
+    print(f"wrote {sum(len(f) for f in frames):,} rows for seeds {args.seeds} -> {path}")
+    return 0
 
 
 def _coverage(q: np.ndarray, y: np.ndarray, mask: np.ndarray) -> float:
@@ -441,7 +542,12 @@ def main() -> int:
         return noise_channel_check(args)
     if args.fold is not None:
         return run_fold(args.fold, args)
-    SCRATCH["on"] = bool(args.models or args.epochs or args.track != "both" or args.hidden or args.input_len or args.tag)
+    if args.add_ensemble:
+        return add_ensemble()
+    if args.seeds:
+        return run_seeds(args)
+    SCRATCH["on"] = bool(args.models or args.epochs or args.track != "both" or args.hidden or args.input_len or args.tag
+                         or args.seed != SEED)
     if SCRATCH["on"]:
         print("PARTIAL RUN: outputs go to Stage02_DL/artifacts/scratch/ and predictions/scratch/ (not the hand-off files).")
 

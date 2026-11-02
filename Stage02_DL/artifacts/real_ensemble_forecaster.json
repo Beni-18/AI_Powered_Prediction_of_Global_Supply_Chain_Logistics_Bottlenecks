@@ -1,0 +1,57 @@
+{
+  "kind": "ensemble",
+  "model_name": "ensemble",
+  "model_version": "v2.0",
+  "track": "real",
+  "members": {
+    "transformer": "real_transformer_forecaster",
+    "xgb_lag": "xgb_lag_real.joblib"
+  },
+  "combine": "mean of the members' scaled q10/q50/q90, then sorted",
+  "conformal_margin_scaled": [
+    [
+      0.051862
+    ],
+    [
+      0.015962
+    ],
+    [
+      0.028814
+    ]
+  ],
+  "targets": [
+    "activity"
+  ],
+  "horizons_steps": [
+    1,
+    3,
+    7
+  ],
+  "step_hours": 24,
+  "node_ids": [
+    "PORT_CN_SHA",
+    "PORT_CN_NGB",
+    "PORT_CN_YTN",
+    "PORT_KR_PUS",
+    "PORT_SG_SIN",
+    "PORT_MY_PKG",
+    "PORT_LK_CMB",
+    "PORT_IN_NSA",
+    "PORT_IN_MAA",
+    "PORT_AE_JEA",
+    "PORT_NL_RTM",
+    "PORT_BE_ANR",
+    "PORT_DE_HAM",
+    "PORT_US_LAX",
+    "PORT_US_OAK",
+    "PORT_US_NYC",
+    "PORT_US_SAV",
+    "CHOKE_SUEZ",
+    "CHOKE_PANAMA",
+    "CHOKE_MALACCA",
+    "CHOKE_HORMUZ",
+    "CHOKE_BAB_EL_MANDEB",
+    "CHOKE_CAPE_GOOD_HOPE"
+  ],
+  "scaler_file": "Stage02_DL/data/real_scaler.json"
+}
