@@ -59,8 +59,10 @@ def history() -> pd.DataFrame:
 
 fc, thr, champion = load()
 st.title("Forecasts")
-st.caption("Expected dwell time and throughput for the next 7 days at every port, canal and hub. "
-           "Forecasts are advice for a planner, never an automatic action.")
+st.markdown("For every port, canal and hub, the model forecasts the **dwell time** (how long cargo waits there) from "
+            "1 hour to 7 days ahead. A node **needs attention** when its dwell time is likely to go above its **alert "
+            "line**, the level it stays below 95% of the time in normal operation.")
+st.caption("Pick a forecast time to replay the test period. Forecasts are advice for a planner, never an automatic action.")
 if fc.empty:
     st.error("No forecasts yet: run Stage02_DL/03_dl_engineer.py and 04_evaluation_engineer.py.")
     st.stop()
