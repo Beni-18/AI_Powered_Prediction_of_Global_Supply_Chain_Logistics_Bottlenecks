@@ -1,8 +1,9 @@
 """CASCADE control tower - Forecasts page (Stage 2, deep learning): expected dwell time and throughput for 7 days.
 Owner: Role 3 (Data & Integration Engineer). Simplified by Role 4 at the team lead's request; Role 3 to review.
 
-What the planner sees: pick a forecast time; a short list of the nodes expected to go above their dwell alert line in
-the next 24 hours; then one node's last week and its forecast for the next 7 days, with a one-sentence summary.
+What the planner sees: pick a forecast time; the early warnings for the next 7 days, raised with Role 4's validated
+alert rule (eval_champion.json: the highest chance of dwell above the alert line over all horizons >= p*); then one
+node's last week and its forecast for the next 7 days, with a one-sentence summary.
 Only the champion model is used. This page reads files only (no PyTorch), so the deployed app stays light.
 
 READS : Stage02_DL/predictions/dl_forecasts.csv.gz (Role 1), Stage02_DL/data/hourly_node_telemetry.csv.gz (Role 3),
@@ -26,7 +27,6 @@ from common.paths import stage_path  # noqa: E402
 MEASURES = {"dwell": ("Dwell time (hours cargo waits)", "avg_dwell_time_hours", "h"),
             "throughput": ("Throughput (containers per hour, TEU)", "throughput_teu_per_hr", "TEU/h")}
 AHEAD = {1: "in 1 hour", 6: "in 6 hours", 24: "in 1 day", 72: "in 3 days", 168: "in 7 days"}
-ATTENTION = 0.5   # list a node when the chance of dwell above its alert line is 50% or more
 # The Stage 2 models in words (the champion is read from Role 4's eval_champion.json).
 MODEL_WORDS = {"transformer": "Transformer neural network", "lstm": "LSTM neural network",
                "graph_full": "graph neural network", "ensemble": "average of a Transformer neural network and XGBoost",
@@ -35,12 +35,16 @@ MODEL_WORDS = {"transformer": "Transformer neural network", "lstm": "LSTM neural
 
 @st.cache_data
 def load() -> tuple:
-    """Champion forecasts for the test period with the chance of crossing the alert line, the alert lines, the champion."""
+    """Champion forecasts for the test period with the chance of crossing the alert line, the alert lines, the champion,
+    and p* (the validated probability threshold of Role 4's alert rule)."""
     path = stage_path(2, "predictions", "dl_forecasts.csv.gz")
-    champion = ui.read_json(stage_path(2, "reports", "eval_champion.json")).get("model")
+    champ = ui.read_json(stage_path(2, "reports", "eval_champion.json"))
+    champion = champ.get("model")
+    # p* is chosen by Role 4 on validation; read it from the file so the page always follows the evaluated rule.
+    p_star = champ.get("alert_rule", {}).get("p_star")
     thr_path = stage_path(2, "reports", "eval_alert_thresholds.csv")
     if not path.exists() or champion is None or not thr_path.exists():
-        return pd.DataFrame(), pd.Series(dtype=float), champion
+        return pd.DataFrame(), pd.Series(dtype=float), champion, p_star
     fc = pd.read_csv(path)
     fc = fc[(fc["split"] == "test") & (fc["model_name"] == champion)].copy()
     fc["origin_ts"] = pd.to_datetime(fc["origin_ts"], utc=True)
@@ -50,7 +54,7 @@ def load() -> tuple:
     dwell = fc["target"] == "dwell"
     fc.loc[dwell, "p_above"] = exceedance_probability(fc.loc[dwell, "y_lo"], fc.loc[dwell, "y_pred"], fc.loc[dwell, "y_hi"],
                                                       fc.loc[dwell, "node_id"].map(thr))
-    return fc, thr, champion
+    return fc, thr, champion, p_star
 
 
 @st.cache_data
@@ -68,59 +72,65 @@ def node_label(node_id: str) -> str:
     return f"{ui.node_name(node_id)} ({kind.lower()})" if kind else ui.node_name(node_id)
 
 
-fc, thr, champion = load()
+fc, thr, champion, p_star = load()
 st.title("Forecasts")
 # What history the champion reads (the ensemble's XGBoost part also reads up to 4 weeks of daily averages).
 READS = {"ensemble": "the last 72 hours (neural network) and up to 4 weeks (XGBoost) of each node"}
 st.markdown(f"**Deep learning (Stage 2)** · model: {MODEL_WORDS.get(champion, champion)}, reading "
             f"{READS.get(champion, 'the last 72 hours of each node')}")
 st.markdown("The model forecasts the **dwell time** (how long cargo waits at a node) and the **throughput** (containers "
-            "handled per hour) from 1 hour to 7 days ahead. A node **needs attention** when its dwell time is likely to "
-            "go above its **alert line**: the level it stays below 95% of the time in normal operation.")
-if fc.empty:
-    st.error("No forecasts yet: run Stage02_DL/03_dl_engineer.py and 04_evaluation_engineer.py.")
+            "handled per hour) from 1 hour to 7 days ahead. A node gets an **early warning** when its dwell time is likely to "
+            "go above its **alert line** (the level it stays below 95% of the time in normal operation) at any point in "
+            "the next 7 days.")
+if fc.empty or p_star is None:
+    st.error("No forecasts or no validated alert rule yet: run Stage02_DL/03_dl_engineer.py and 04_evaluation_engineer.py.")
     st.stop()
 st.info("**How to use this page.** 1. Choose the moment the forecast is made. "
-        "2. Read the list of nodes that need attention in the next 24 hours. "
+        "2. Read the early warnings for the next 7 days. "
         "3. Pick a node to see its last 7 days and its forecast for the next 7 days.")
 
-# Step 1: the forecast time. It opens on the time with the most nodes needing attention, so the list is not empty.
-day_ahead = fc[(fc["target"] == "dwell") & (fc["horizon_h"] == 24)]
+# Step 1: the forecast time. It opens on the time with the most early warnings, so the list is not empty.
+dwell_fc = fc[fc["target"] == "dwell"]
+# Role 4's rule B: per node and forecast time, the HIGHEST chance of dwell above the alert line over all horizons.
+peak = dwell_fc.loc[dwell_fc.groupby(["origin_ts", "node_id"])["p_above"].idxmax()]
+peak = peak[["origin_ts", "node_id", "horizon_h", "y_pred", "p_above"]]
 origins = sorted(fc["origin_ts"].unique())
-busiest = day_ahead.groupby("origin_ts")["p_above"].apply(lambda p: (p >= ATTENTION).sum()).idxmax()
+busiest = peak.groupby("origin_ts")["p_above"].apply(lambda p: (p >= p_star).sum()).idxmax()
 origin = st.select_slider(
     "1. Forecast made at (UTC)", options=origins, value=busiest, format_func=lambda t: pd.Timestamp(t).strftime("%d %b %Y %H:%M"),
     help="The model only uses data measured up to this moment. Slide to replay the test period (Nov-Dec 2025), "
          "which the model never saw during training.")
 
-# Step 2: nodes likely to be above their dwell alert line in 24 hours.
-now = day_ahead[day_ahead["origin_ts"] == origin].set_index("node_id")
-attention = now[now["p_above"] >= ATTENTION].sort_values("p_above", ascending=False)
-st.subheader("2. Needs attention in the next 24 hours")
-if attention.empty:
-    st.success("No node is expected to go above its dwell alert line in the next 24 hours.")
+# Step 2: early warnings = nodes whose highest chance over the next 7 days reaches p*.
+now = peak[peak["origin_ts"] == origin].set_index("node_id")
+warnings = now[now["p_above"] >= p_star].sort_values("p_above", ascending=False)
+st.subheader("2. Early warnings (next 7 days)")
+if warnings.empty:
+    st.success("No early warning: no node is likely to go above its dwell alert line in the next 7 days.")
 else:
-    st.caption(f"Nodes with a {ATTENTION:.0%} or higher chance that dwell time will be above their alert line one day "
-               "after the forecast time.")
+    st.caption(f"A node is listed when its highest chance of dwell above the alert line, over the next 7 days, is "
+               f"{p_star:.0%} or more. This is the evaluated alert rule; {p_star:.0%} was chosen on the validation period.")
     st.dataframe(pd.DataFrame({
-        "Node": attention.index.map(node_label),
-        "Expected dwell in 1 day": attention["y_pred"].round(1).astype(str) + " h",
-        "Alert line": attention.index.map(thr).round(1).astype(str) + " h",
-        "Chance above the line": 100 * attention["p_above"],
+        "Node": warnings.index.map(node_label),
+        "Most likely when": warnings["horizon_h"].map(AHEAD),
+        "Expected dwell then": warnings["y_pred"].round(1).astype(str) + " h",
+        "Alert line": warnings.index.map(thr).round(1).astype(str) + " h",
+        "Chance above the line": 100 * warnings["p_above"],
     }), hide_index=True, width="stretch",
         column_config={
-            "Expected dwell in 1 day": st.column_config.TextColumn(help="The model's most likely dwell time 24 hours ahead"),
+            "Most likely when": st.column_config.TextColumn(help="The forecast step with the highest chance of being above the line"),
+            "Expected dwell then": st.column_config.TextColumn(help="The model's most likely dwell time at that step"),
             "Alert line": st.column_config.TextColumn(help="The node's normal upper limit: 95% of training hours were below it"),
             "Chance above the line": st.column_config.ProgressColumn(
-                format="%.0f%%", min_value=0, max_value=100, help="Chance that dwell time is above the alert line in 24 hours"),
+                format="%.0f%%", min_value=0, max_value=100, help="Highest chance over the next 7 days that dwell time is above the alert line"),
         })
 
 # Step 3: one node's last 7 days and its forecast for the next 7 days.
 st.subheader("3. Forecast for one node")
-node_ids = list(attention.index) + [n for n in ui.nodes()["node_id"] if n not in attention.index]
+node_ids = list(warnings.index) + [n for n in ui.nodes()["node_id"] if n not in warnings.index]
 c1, c2 = st.columns([3, 2])
 node = c1.selectbox("Node (port, canal or hub)", node_ids, format_func=node_label,
-                    help="Nodes that need attention are listed first.")
+                    help="Nodes with an early warning are listed first.")
 measure = c2.radio("What to forecast", list(MEASURES), format_func=lambda m: MEASURES[m][0], horizontal=True,
                    help="Dwell time: hours cargo waits at the node. Throughput: containers (TEU) handled per hour.")
 label, column, unit = MEASURES[measure]
