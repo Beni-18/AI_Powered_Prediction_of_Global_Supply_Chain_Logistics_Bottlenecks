@@ -20,8 +20,9 @@ data_version: v1, models v2.0 (full run)
   - optional `?model=lstm|transformer|graph_full|graph_shuffled|graph_none`; the default is Role 4's champion (`eval_champion.json`)
 - Answers carry, for each of the 5 horizons, q10/q50/q90 for dwell and throughput, plus `alert_prob_24h` (P(dwell above the node's alert line 24 h ahead)), `alert_threshold_dwell_h`, `model_version`, `evidence` and **`requires_operator_review: true`**
 - Script mode `python 05_integration_engineer.py` -> `Stage02_DL/reports/integ_latency.json` (200 in-process calls per model)
-- Dashboard simplified on 2 Nov 2026 (team lead's request, written by Role 4): `app.py` now has two pages in a top menu, champion models only, no model picker, no maps, no evidence pages.
-  - `pages/1_Shipments.py`: test-period shipments with the chance of a 24 h+ delay (alerts only by default, filter by location), click a row for the reasons, and a form to check a new shipment
+- Dashboard simplified on 2 Nov 2026 (team lead's request, written by Role 4): `app.py` now has three pages in a top menu, champion models only, no model picker, no maps, no evidence pages.
+  - `pages/0_Home.py`: what the tool does in plain words: the three shipment statuses (On time < 6 h late, At risk 6-24 h, Critical 24 h+) with counts, and what the forecasts warn about; links to the two pages
+  - `pages/1_Shipments.py`: counts per predicted status; list filtered by status (default Critical) and location, status in colour; click a row for the chance of each status, the planner-check decision (chance of Critical >= the champion threshold) and the main reasons; a form to check a new shipment
   - `pages/2_Forecasts.py`: pick a forecast time; nodes likely above their dwell alert line in 24 h; one node's last 7 days + 7-day forecast with the 80% range and the alert line, and the same as a small table
   - The evaluation charts stay in `Stage0N/reports/eval_*` and `eda_*` (not on screen)
 - `tests/integ/test_api_stage02.py`: answer shape, ordered intervals, review flag, 422 on short/gapped/unknown-node/out-of-range/unknown-model, refusal with a hint outside the stored period; `tests/integ/test_control_tower_pages.py` now renders the two new pages too

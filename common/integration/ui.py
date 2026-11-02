@@ -25,6 +25,9 @@ STATUS = {
     "AT_RISK": {"label": "At risk", "color": "#fab219"},
     "CRITICAL_DELAY": {"label": "Critical", "color": "#d03b3b"},
 }
+# The three outcomes the Stage 1 model predicts, worst first, with their meaning (contracts/label_policy.json).
+STATUS_ORDER = ["CRITICAL_DELAY", "AT_RISK", "ON_TIME"]
+STATUS_MEANING = {"ON_TIME": "less than 6 hours late", "AT_RISK": "6 to 24 hours late", "CRITICAL_DELAY": "24 hours or more late"}
 NODE_TYPE_LABEL = {"PORT": "Port", "CHOKEPOINT": "Chokepoint", "RAIL_HUB": "Rail hub", "DC": "Distribution hub"}
 
 # What each model input means, in words a planner uses.
@@ -278,6 +281,12 @@ def scored_period(split: str, model_name: str | None = None) -> pd.DataFrame:
     real = rows.set_index("record_id")[["timestamp", "delay_status", "realized_delay_hours", "carrier_code",
                                         "priority_tier", "origin_port", "destination_port"]]
     return table.drop(columns=["probabilities", "top_drivers"]).join(real, on="record_id")
+
+
+@st.cache_data
+def test_period_scores() -> pd.DataFrame:
+    """Every test-period shipment scored by the champion model, computed once and shared by all pages."""
+    return scored_period("test")
 
 
 def node_summary(scored: pd.DataFrame) -> pd.DataFrame:
