@@ -2,100 +2,100 @@
   "champion": {
     "model": "transformer",
     "chosen_on": "validation: skill vs persistence for dwell at 24 h, then episode recall",
-    "val_skill_dwell_24h": 0.1797,
+    "val_skill_dwell_24h": 0.182,
     "best_baseline_on_val": "xgb_lag",
-    "best_baseline_val_skill_dwell_24h": 0.1463,
+    "best_baseline_val_skill_dwell_24h": 0.1659,
     "beats_best_baseline_on_val": true,
     "alert_rule": {
       "A": "alert when any horizon's median dwell forecast >= node threshold",
-      "B": "alert when max P(dwell >= threshold) >= 0.70 (p* chosen on validation by cost)",
-      "p_star": 0.7,
+      "B": "alert when max P(dwell >= threshold) >= 0.65 (p* chosen on validation by cost)",
+      "p_star": 0.65,
       "thresholds_file": "Stage02_DL/reports/eval_alert_thresholds.csv",
-      "operating_rule": "B_prob_ge_0.70",
+      "operating_rule": "B_prob_ge_0.65",
       "operating_rule_chosen_on": "validation warning cost (10 per missed episode + 1 per false alarm)"
     },
-    "model_version": "v2.0-fast"
+    "model_version": "v2.0"
   },
   "headline": {
-    "skill_dwell_24h": "0.168 [0.147, 0.189]",
-    "skill_dwell_168h": "0.216 [0.191, 0.241]",
+    "skill_dwell_24h": "0.171 [0.147, 0.196]",
+    "skill_dwell_168h": "0.222 [0.194, 0.249]",
     "positive_skill_horizons": "5/5 dwell, 5/5 throughput",
-    "skill_vs_best_baseline_dwell_24h": "0.048 [0.035, 0.063] vs xgb_lag",
-    "episode_recall": "0.69 [0.42, 0.87] (n = 13)",
-    "median_lead_h": "32 [10, 89]",
-    "alert_rule_chosen_on_val": "B_prob_ge_0.70",
-    "warning_cost_test": "transformer 49 vs lstm 54, xgb_lag 98, persistence 92, stage1_risk 401",
+    "skill_vs_best_baseline_dwell_24h": "0.044 [0.029, 0.058] vs xgb_lag",
+    "episode_recall": "0.77 [0.50, 0.92] (n = 13)",
+    "median_lead_h": "22 [4, 71]",
+    "alert_rule_chosen_on_val": "B_prob_ge_0.65",
+    "warning_cost_test": "transformer 38 vs lstm 55, xgb_lag 52, persistence 93, stage1_risk 401",
     "false_alarms_per_node_week": "0.06",
-    "coverage_dwell": "0.798",
-    "ablation_vs_none": "better in 0/10, worse in 3",
-    "ablation_vs_shuffled": "better in 0/10, worse in 6",
+    "coverage_dwell": "0.799",
+    "ablation_vs_none": "better in 0/10, worse in 10",
+    "ablation_vs_shuffled": "better in 0/10, worse in 8",
     "real_positive_skill": "transformer 3/3 horizons (CI above 0)",
-    "real_skill": "24 h: 0.253 [0.235, 0.270]; 72 h: 0.257 [0.241, 0.272]; 168 h: 0.215 [0.200, 0.230]",
-    "real_skill_vs_best_baseline": "24 h: 0.033 [0.021, 0.046]; 72 h: 0.017 [-0.005, 0.040]; 168 h: 0.035 [0.023, 0.049]"
+    "real_skill": "24 h: 0.248 [0.230, 0.266]; 72 h: 0.252 [0.234, 0.268]; 168 h: 0.216 [0.199, 0.233]",
+    "real_skill_vs_best_baseline": "24 h: 0.009 [-0.007, 0.023]; 72 h: 0.009 [-0.015, 0.034]; 168 h: 0.023 [0.007, 0.039]"
   },
   "trust": {
     "passed": true
   },
   "diebold_mariano": {
     "transformer_vs_persistence_dwell_24h": {
-      "mean_diff": -0.8096699767928908,
-      "dm_stat": -13.488920252730237,
-      "p_value": 1.8174266993946507e-41,
+      "mean_diff": -0.8245060891303939,
+      "dm_stat": -12.061334273747251,
+      "p_value": 1.6902221599103772e-33,
       "n": 151
     },
     "transformer_vs_persistence_dwell_168h": {
-      "mean_diff": -1.6612410399803779,
-      "dm_stat": -9.43579826501102,
-      "p_value": 3.8802823242441255e-21,
+      "mean_diff": -1.703460316220449,
+      "dm_stat": -9.399006916836752,
+      "p_value": 5.508046858720417e-21,
       "n": 151
     },
     "transformer_vs_xgb_lag_dwell_24h": {
-      "mean_diff": -0.2039274873115601,
-      "dm_stat": -6.392564932122421,
-      "p_value": 1.631259177564663e-10,
+      "mean_diff": -0.18656969000584894,
+      "dm_stat": -5.593477744811173,
+      "p_value": 2.2256576599596163e-08,
       "n": 151
     },
     "transformer_vs_xgb_lag_dwell_168h": {
-      "mean_diff": -0.12833896907605521,
-      "dm_stat": -1.1832151587634698,
-      "p_value": 0.23672388676289302,
+      "mean_diff": -0.012532233354087671,
+      "dm_stat": -0.16107110790313442,
+      "p_value": 0.8720373956444493,
       "n": 151
     },
     "transformer_vs_graph_none_dwell_24h": {
-      "mean_diff": -0.22316782890888856,
-      "dm_stat": -8.645353788461062,
-      "p_value": 5.363884234430861e-18,
+      "mean_diff": -0.056727027131563613,
+      "dm_stat": -2.2262354647843465,
+      "p_value": 0.02599841361693642,
       "n": 151
     },
     "transformer_vs_graph_none_dwell_168h": {
-      "mean_diff": -0.28170213354465024,
-      "dm_stat": -2.385332475734508,
-      "p_value": 0.017063692080254857,
+      "mean_diff": 0.04651511631855999,
+      "dm_stat": 0.5513136853943499,
+      "p_value": 0.5814186586035819,
       "n": 151
     },
     "transformer_vs_lstm_dwell_24h": {
-      "mean_diff": -0.12160440293579367,
-      "dm_stat": -5.232372737734146,
-      "p_value": 1.6734786521491255e-07,
+      "mean_diff": -0.03350716194034079,
+      "dm_stat": -1.5430446816708632,
+      "p_value": 0.12281993515943618,
       "n": 151
     },
     "transformer_vs_lstm_dwell_168h": {
-      "mean_diff": 0.03695346767042125,
-      "dm_stat": 0.41776854328786994,
-      "p_value": 0.6761163521576398,
+      "mean_diff": -0.06987361823361832,
+      "dm_stat": -0.8397554967175886,
+      "p_value": 0.4010454905623624,
       "n": 151
     }
   },
   "p_star_by_model": {
     "graph_full": 0.4,
     "graph_none": 0.6,
-    "graph_shuffled": 0.55,
-    "lstm": 0.55,
+    "graph_shuffled": 0.6,
+    "lstm": 0.65,
     "persistence": 0.9,
     "rolling_mean": 0.65,
     "seasonal_naive": 0.9,
-    "transformer": 0.7,
-    "xgb_lag": 0.75
+    "transformer": 0.65,
+    "xgb_lag": 0.6
   },
   "episode_threshold": "node p95 of TRAIN dwell",
   "lookback_h": 168,
@@ -105,15 +105,15 @@
       "available": true,
       "cells": 10,
       "graph_full_better": 0,
-      "graph_full_worse": 3,
-      "no_clear_difference": 7
+      "graph_full_worse": 10,
+      "no_clear_difference": 0
     },
     "vs_shuffled": {
       "available": true,
       "cells": 10,
       "graph_full_better": 0,
-      "graph_full_worse": 6,
-      "no_clear_difference": 4
+      "graph_full_worse": 8,
+      "no_clear_difference": 2
     }
   },
   "positive_skill_horizons_by_model": {
@@ -157,24 +157,24 @@
     "n_horizons": 3,
     "skill_test": {
       "graph_full|h24": [
-        0.2095,
-        0.1906,
-        0.2276
+        0.2331,
+        0.2183,
+        0.2472
       ],
       "graph_none|h24": [
-        0.2234,
-        0.2057,
-        0.2404
+        0.2455,
+        0.2314,
+        0.2585
       ],
       "graph_shuffled|h24": [
-        0.214,
-        0.1955,
-        0.231
+        0.2366,
+        0.2207,
+        0.2509
       ],
       "lstm|h24": [
-        0.1753,
-        0.1566,
-        0.1931
+        0.1684,
+        0.1498,
+        0.1877
       ],
       "persistence|h24": [
         0.0,
@@ -192,34 +192,34 @@
         0.0518
       ],
       "transformer|h24": [
-        0.2528,
-        0.2349,
-        0.2702
+        0.2479,
+        0.2296,
+        0.2655
       ],
       "xgb_lag|h24": [
-        0.2271,
-        0.212,
-        0.2414
+        0.2412,
+        0.2256,
+        0.2555
       ],
       "graph_full|h72": [
-        0.2184,
-        0.198,
-        0.2354
+        0.2408,
+        0.2271,
+        0.2532
       ],
       "graph_none|h72": [
-        0.2356,
-        0.2191,
-        0.2504
+        0.2491,
+        0.2371,
+        0.2599
       ],
       "graph_shuffled|h72": [
-        0.225,
-        0.2075,
-        0.2409
+        0.2466,
+        0.2336,
+        0.2579
       ],
       "lstm|h72": [
-        0.1898,
-        0.1709,
-        0.2064
+        0.1918,
+        0.1718,
+        0.2109
       ],
       "persistence|h72": [
         0.0,
@@ -237,34 +237,34 @@
         0.0813
       ],
       "transformer|h72": [
-        0.2571,
-        0.241,
-        0.2724
+        0.2517,
+        0.2336,
+        0.2683
       ],
       "xgb_lag|h72": [
-        0.1841,
-        0.1695,
-        0.1973
+        0.2095,
+        0.1963,
+        0.2214
       ],
       "graph_full|h168": [
-        0.1749,
-        0.1571,
-        0.1919
+        0.1985,
+        0.186,
+        0.2102
       ],
       "graph_none|h168": [
-        0.1858,
-        0.1714,
-        0.1994
+        0.2078,
+        0.1968,
+        0.2182
       ],
       "graph_shuffled|h168": [
-        0.1805,
-        0.1654,
-        0.1949
+        0.206,
+        0.1948,
+        0.2165
       ],
       "lstm|h168": [
-        0.1523,
-        0.1354,
-        0.1681
+        0.1579,
+        0.1396,
+        0.1753
       ],
       "persistence|h168": [
         0.0,
@@ -282,56 +282,56 @@
         0.0
       ],
       "transformer|h168": [
-        0.2152,
-        0.2,
-        0.2298
+        0.2161,
+        0.199,
+        0.2326
       ],
       "xgb_lag|h168": [
-        0.1865,
-        0.1731,
-        0.1991
+        0.1976,
+        0.1863,
+        0.2087
       ]
     },
     "skill_vs_best_test": {
       "graph_full|h24": [
-        -0.0228,
-        -0.0374,
-        -0.0103
+        -0.0107,
+        -0.0211,
+        -0.0001
       ],
       "graph_none|h24": [
-        -0.0048,
-        -0.0172,
-        0.0065
+        0.0057,
+        -0.0035,
+        0.0149
       ],
       "graph_shuffled|h24": [
-        -0.0169,
-        -0.0298,
-        -0.0057
+        -0.0061,
+        -0.0158,
+        0.0031
       ],
       "lstm|h24": [
-        -0.067,
-        -0.0783,
-        -0.0561
+        -0.0959,
+        -0.1122,
+        -0.0791
       ],
       "persistence|h24": [
-        -0.2938,
-        -0.3181,
-        -0.2691
+        -0.3179,
+        -0.3431,
+        -0.2914
       ],
       "rolling_mean|h24": [
-        -0.0117,
-        -0.032,
-        0.008
+        -0.0305,
+        -0.0503,
+        -0.0116
       ],
       "seasonal_naive|h24": [
-        -0.2515,
-        -0.273,
-        -0.231
+        -0.2749,
+        -0.2976,
+        -0.2527
       ],
       "transformer|h24": [
-        0.0332,
-        0.0212,
-        0.0456
+        0.0088,
+        -0.0067,
+        0.0233
       ],
       "xgb_lag|h24": [
         0.0,
@@ -339,24 +339,24 @@
         0.0
       ],
       "graph_full|h72": [
-        -0.0345,
-        -0.0627,
-        -0.0097
+        -0.0048,
+        -0.0229,
+        0.0136
       ],
       "graph_none|h72": [
-        -0.0117,
-        -0.0353,
-        0.0103
+        0.0061,
+        -0.0108,
+        0.0239
       ],
       "graph_shuffled|h72": [
-        -0.0258,
-        -0.0503,
-        -0.003
+        0.0028,
+        -0.015,
+        0.0204
       ],
       "lstm|h72": [
-        -0.0723,
-        -0.0977,
-        -0.0487
+        -0.0697,
+        -0.0985,
+        -0.0428
       ],
       "persistence|h72": [
         -0.3236,
@@ -374,54 +374,54 @@
         -0.2206
       ],
       "transformer|h72": [
-        0.0168,
-        -0.0054,
-        0.0395
+        0.0095,
+        -0.0147,
+        0.0341
       ],
       "xgb_lag|h72": [
-        -0.0799,
-        -0.1008,
-        -0.0595
+        -0.0462,
+        -0.0663,
+        -0.0268
       ],
       "graph_full|h168": [
-        -0.0143,
-        -0.0286,
-        -0.0008
+        0.0011,
+        -0.0071,
+        0.0094
       ],
       "graph_none|h168": [
-        -0.0008,
-        -0.0117,
-        0.0109
+        0.0127,
+        0.0051,
+        0.0211
       ],
       "graph_shuffled|h168": [
-        -0.0073,
-        -0.018,
-        0.0044
+        0.0105,
+        0.0036,
+        0.0178
       ],
       "lstm|h168": [
-        -0.042,
-        -0.055,
-        -0.0283
+        -0.0495,
+        -0.0648,
+        -0.0338
       ],
       "persistence|h168": [
-        -0.2293,
-        -0.2486,
-        -0.2094
+        -0.2462,
+        -0.2638,
+        -0.2289
       ],
       "rolling_mean|h168": [
-        0.0114,
-        -0.0078,
-        0.0305
+        -0.0022,
+        -0.0206,
+        0.0155
       ],
       "seasonal_naive|h168": [
-        -0.2293,
-        -0.2486,
-        -0.2094
+        -0.2462,
+        -0.2638,
+        -0.2289
       ],
       "transformer|h168": [
-        0.0353,
-        0.0232,
-        0.0485
+        0.023,
+        0.0073,
+        0.0386
       ],
       "xgb_lag|h168": [
         0.0,
@@ -440,16 +440,15 @@
       "available": true,
       "cells": 3,
       "graph_full_better": 0,
-      "graph_full_worse": 3,
-      "no_clear_difference": 0
+      "graph_full_worse": 2,
+      "no_clear_difference": 1
     }
   },
   "honest_notes": [
     "- The champion was picked on validation; its test skill is reported as is, even where it is not significant.",
-    "- **Recall alone is not a fair score.** With rule A even persistence catches 12/13 test episodes (noisy readings crossing the line), at 71 false alarms. Compare models on the warning cost of their validation-chosen rule: transformer 49 vs lstm 54, xgb_lag 98, persistence 92, stage1_risk 401.",
-    "- **The graph does not clearly help** on the simulated track: graph_full vs graph_none better in 0/10, worse in 3, vs graph_shuffled better in 0/10, worse in 6 (target x horizon cells, paired 95% CI). That is a finding, not a failure.",
+    "- **Recall alone is not a fair score.** With rule A even persistence catches 12/13 test episodes (noisy readings crossing the line), at 71 false alarms. Compare models on the warning cost of their validation-chosen rule: transformer 38 vs lstm 55, xgb_lag 52, persistence 93, stage1_risk 401.",
+    "- **The graph does not clearly help** on the simulated track: graph_full vs graph_none better in 0/10, worse in 10, vs graph_shuffled better in 0/10, worse in 8 (target x horizon cells, paired 95% CI). That is a finding, not a failure.",
     "- The graph does not help on the REAL track either (eval_real_graph_ablation.csv).",
-    "- These numbers come from the --fast training run (hidden 32, <= 10 epochs); claims stay PENDING until the full run.",
     "- Data are simulated (SYNTHETIC_CALIBRATED); the real-data track checks the same models on IMF PortWatch counts."
   ],
   "n_boot": 1000
