@@ -45,7 +45,7 @@ PASS  Stage02_DL/data/hourly_node_telemetry.csv.gz  (236520 rows, schema 'hourly
 - Latency (31 Oct, fast models, this laptop), `reports/integ_latency.json`: p95 3.3 ms Transformer, 4.8 ms LSTM, ~21 ms graph models. Measured on the **service without HTTP**, because the test client needs `httpx2`, which is not installed.
 - API answers equal the evaluated forecast file exactly (checked 4 models x 3 nodes x 5 horizons x 2 targets x 3 quantiles, max difference 0).
 - Fixed on 31 Oct: the 72-hour check compared raw integers in nanoseconds, but pandas 3 parses these times at seconds resolution, so it rejected every valid POST. It now compares real time differences. The API tests did not catch this because they skip without `httpx`.
-- The champion is `transformer` (`eval_champion.json`), so the default model needs only the node's own 72 hours.
+- 2 Nov (Role 4, at the team lead's request): the champion is now `ensemble` (transformer + xgb_lag, `eval_champion.json`). The API loads it from `artifacts/ensemble_forecaster.json` (`EnsembleForecaster` in `dl_infer.py`). Like the graph models it needs the stored network history, so a POST outside the stored grid gets a 422 that points to `?model=transformer` or `?model=lstm`. Latency p95 (in-process TestClient, 200 calls): ensemble 39.6 ms, transformer 9.0 ms, LSTM 19.7 ms, graph models 31-34 ms. `test_ensemble_replay_equals_the_forecast_file` checks the served ensemble against the file.
 - Until `04_evaluation_engineer.py` has run, the map shows a warning and no alert probabilities (no thresholds yet), and the API defaults to the first loaded model.
 - Fast-mode models are in `artifacts/` now. Re-run the latency script after the full run.
 
