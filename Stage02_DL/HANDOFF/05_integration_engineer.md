@@ -1,8 +1,8 @@
 # Stage 02 - Role 3 - Data & Integration Engineer -> hand-off note (05_integration_engineer.py)
 
-status: IN_PROGRESS
+status: READY
 updated_utc: 2026-11-02
-git_commit: branch integ/stage02-closeout
+git_commit: main b4d26df (PR #28) + branch integ/stage02-final-check-v2
 data_version: v1, models v2.0 (full run)
 
 > Allowed status values: NOT_STARTED, IN_PROGRESS, READY, BLOCKED.
@@ -94,9 +94,9 @@ PASS  Stage02_DL/data/hourly_node_telemetry.csv.gz  (236520 rows, schema 'hourly
 
 ## Your tasks (Pravin) - status
 1. [MUST] Review the API, the pages and the tests - **done** (2 Nov; Role 4's ensemble changes reviewed and kept).
-2. [MUST] Full-run outputs - **done** (PR #22 models, PR #25 evaluation, PR #27 ensemble). Clean-clone run: see `reports/integ_final_check.md`.
+2. [MUST] Full-run outputs - **done** (PR #22 models, PR #25 evaluation, PR #27 ensemble). Fresh-clone run 2 Nov: every Stage 2 csv/json/md output IDENTICAL (`reports/integ_final_check.md`).
 3. [MUST] httpx + httpx2, latency over HTTP, `/docs` - **done**.
-4. [MUST] Close-out fixes - **done locally**: API fallback to the transformer, p* early warnings on the Forecasts page, `requirements-lock.txt`.
-5. [MUST] Deploy and check on the live URL - **after the close-out PR is merged** (status stays IN_PROGRESS until then).
+4. [MUST] Close-out fixes - **done and merged** (PR #28): API fallback to the transformer, p* early warnings on the Forecasts page, `requirements-lock.txt`.
+5. [MUST] Deploy and check on the live URL - **done** (2 Nov, after PR #28): Home, Shipments (ML) and Forecasts (DL) load with no error and show the ensemble and the p* early warnings.
 6. [SHOULD] Polish the map - **dropped**: the team lead's simplified dashboard (PR #24) has no map.
 7. [STRETCH] Animated propagation replay - **not done**.

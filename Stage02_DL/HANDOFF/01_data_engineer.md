@@ -1,8 +1,8 @@
 # Stage 02 - Role 3 - Data & Integration Engineer -> hand-off note (01_data_engineer.py)
 
 status: READY
-updated_utc: 2026-10-31
-git_commit: see PR from branch data/stage02-review
+updated_utc: 2026-11-02
+git_commit: main b4d26df (data unchanged since PR #21)
 data_version: v1 (sim track) + real track v1 (IMF PortWatch to 2026-07-24)
 
 > Allowed status values: NOT_STARTED, IN_PROGRESS, READY, BLOCKED.
@@ -72,3 +72,6 @@ PASS  Stage02_DL/data/hourly_node_telemetry.csv.gz  (236520 rows, schema 'hourly
    longer shows as a git change.
 3. [SHOULD] Chokepoint throughput conversion note - **done** (above).
 4. [SHOULD] Augmentation helpers - **done** (`common/dataio/augment.py`, 17 tests).
+5. Close-out re-check (2026-11-02) - **done**: fresh clone of `main` at `b4d26df`, `.venv` from `requirements-lock.txt`,
+   `fetch_real_data.py` (27 min 38 s) then `01_data_engineer.py`: all 15 `Stage02_DL/data/*` and `data/calibration/*` files
+   IDENTICAL to the committed ones; `PASS hourly_node_telemetry (236520 rows)`. Details: `Stage02_DL/reports/integ_final_check.md`.
