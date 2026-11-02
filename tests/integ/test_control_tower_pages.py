@@ -16,8 +16,7 @@ pytest.importorskip("plotly")
 pytest.importorskip("xgboost")
 pytestmark = pytest.mark.skipif(not stage_path(1, "artifacts", "stage01_models.joblib").exists(), reason="Stage 1 model not present")
 
-# pages/0_Home.py is tested through app.py (it is the default page): its links to the other pages only work
-# inside the app's page menu, so it cannot run on its own.
+# app.py opens on the Shipments page (its default page); both pages are also rendered on their own.
 PAGES = ["app.py", "pages/1_Shipments.py", "pages/2_Forecasts.py"]
 SCRIPT = """
 import sys
