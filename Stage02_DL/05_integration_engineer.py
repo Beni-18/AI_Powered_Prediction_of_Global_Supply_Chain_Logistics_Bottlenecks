@@ -106,13 +106,16 @@ class Service:
     """Loads the models, the stored grid, the champion choice and the alert thresholds once per process."""
 
     def __init__(self):
-        from common.modelkit.dl_infer import Stage2Forecaster  # PyTorch is only needed once the service starts
+        from common.modelkit.dl_infer import EnsembleForecaster, Stage2Forecaster  # PyTorch only once the service starts
 
         self.node_ids = pd.read_csv(NODES_CSV)["node_id"].tolist()
         self.forecasters = {}
         for name, artifact in MODELS.items():
             if stage_path(STAGE, "artifacts", f"{artifact}.pt").exists():
                 self.forecasters[name] = Stage2Forecaster.from_artifact(artifact)
+        # The transformer + xgb_lag ensemble (Role 1's ensemble_forecaster.json), served when its parts exist.
+        if stage_path(STAGE, "artifacts", "ensemble_forecaster.json").exists() and "transformer" in self.forecasters:
+            self.forecasters["ensemble"] = EnsembleForecaster.from_artifact("ensemble_forecaster")
         if not self.forecasters:
             raise RuntimeError("No Stage 2 model artefacts found; run Stage02_DL/03_dl_engineer.py first.")
         champ_file = stage_path(STAGE, "reports", "eval_champion.json")
@@ -161,7 +164,8 @@ class Service:
         else:
             if not (self.grid_hours[0] + pd.Timedelta(hours=INPUT_HOURS - 1) <= last_hour <= self.grid_hours[1]):
                 raise ValueError(f"'{name}' needs the network's history at {last_hour:%Y-%m-%dT%H:%MZ}, which is outside the "
-                                 f"stored grid ({self.grid_hours[0]:%Y-%m-%d} .. {self.grid_hours[1]:%Y-%m-%d}); use ?model=lstm")
+                                 f"stored grid ({self.grid_hours[0]:%Y-%m-%d} .. {self.grid_hours[1]:%Y-%m-%d}); "
+                                 "use ?model=transformer or ?model=lstm, which read only the posted 72 hours")
             data, origin = sim_window(self.grid, self.node_ids, f.scaler, last_hour, override=records, override_node=node_id)
             source = ("posted 72 hours of this node + stored history of the other nodes" if records is not None
                       else "stored hourly grid (replay)")

@@ -153,7 +153,7 @@
     "status": "RUN",
     "test_origins_attribution": 37,
     "test_origins_attention": 151,
-    "model_version": "v2.0-fast",
+    "model_version": "v2.0",
     "attribution": {
       "lstm_forecaster/dwell": {
         "top3_channels": [
@@ -162,66 +162,66 @@
           "equipment_availability_pct"
         ],
         "group_shares": {
-          "calendar": 0.034699998795986176,
-          "operational driver": 0.3734999895095825,
-          "own history": 0.5195000171661377,
+          "calendar": 0.030300000682473183,
+          "operational driver": 0.36880001425743103,
+          "own history": 0.4936999976634979,
           "reporting flag": 0.0003000000142492354,
-          "yard state": 0.07199999690055847
+          "yard state": 0.10689999908208847
         },
-        "share_last_6h": 0.8560000061988831,
-        "share_last_24h": 0.976212203502655,
-        "completeness_gap_median": 0.0009624367312616685
+        "share_last_6h": 0.8152534365653992,
+        "share_last_24h": 0.9400710463523865,
+        "completeness_gap_median": 0.002894903210318037
       },
       "lstm_forecaster/throughput": {
         "top3_channels": [
           "throughput_teu_per_hr",
-          "inventory_level_teu",
-          "capacity_utilization_pct"
-        ],
-        "group_shares": {
-          "calendar": 0.03739999979734421,
-          "operational driver": 0.2524999976158142,
-          "own history": 0.5938000082969666,
-          "reporting flag": 0.0003000000142492354,
-          "yard state": 0.1160999983549118
-        },
-        "share_last_6h": 0.862654447555542,
-        "share_last_24h": 0.972739040851593,
-        "completeness_gap_median": 0.0017514941640123512
-      },
-      "transformer_forecaster/dwell": {
-        "top3_channels": [
-          "avg_dwell_time_hours",
           "capacity_utilization_pct",
           "inventory_level_teu"
         ],
         "group_shares": {
-          "calendar": 0.08619999885559082,
-          "operational driver": 0.3700999915599823,
-          "own history": 0.454800009727478,
-          "reporting flag": 0.0003000000142492354,
-          "yard state": 0.08869999647140503
+          "calendar": 0.04270000010728836,
+          "operational driver": 0.30410000681877136,
+          "own history": 0.5496000051498413,
+          "reporting flag": 0.00019999999494757503,
+          "yard state": 0.10339999943971634
         },
-        "share_last_6h": 0.5831397771835327,
-        "share_last_24h": 0.7028550505638123,
-        "completeness_gap_median": 0.0007692350408971572
+        "share_last_6h": 0.824748158454895,
+        "share_last_24h": 0.9473598003387451,
+        "completeness_gap_median": 0.008066489653169287
+      },
+      "transformer_forecaster/dwell": {
+        "top3_channels": [
+          "avg_dwell_time_hours",
+          "equipment_availability_pct",
+          "capacity_utilization_pct"
+        ],
+        "group_shares": {
+          "calendar": 0.08330000191926956,
+          "operational driver": 0.3409999907016754,
+          "own history": 0.4781000018119812,
+          "reporting flag": 0.00019999999494757503,
+          "yard state": 0.09730000048875809
+        },
+        "share_last_6h": 0.5844863653182983,
+        "share_last_24h": 0.7042452096939087,
+        "completeness_gap_median": 0.004438437166099366
       },
       "transformer_forecaster/throughput": {
         "top3_channels": [
           "throughput_teu_per_hr",
-          "inventory_level_teu",
-          "capacity_utilization_pct"
+          "capacity_utilization_pct",
+          "inventory_level_teu"
         ],
         "group_shares": {
-          "calendar": 0.08190000057220459,
-          "operational driver": 0.24799999594688416,
-          "own history": 0.5146999955177307,
+          "calendar": 0.09449999779462814,
+          "operational driver": 0.3059999942779541,
+          "own history": 0.5162000060081482,
           "reporting flag": 0.0003000000142492354,
-          "yard state": 0.1551000028848648
+          "yard state": 0.08299999684095383
         },
-        "share_last_6h": 0.599656879901886,
-        "share_last_24h": 0.7152284979820251,
-        "completeness_gap_median": 0.0005024112262621659
+        "share_last_6h": 0.6177271008491516,
+        "share_last_24h": 0.7279937863349915,
+        "completeness_gap_median": 0.004208798547142895
       }
     },
     "noise_channel": {
@@ -317,22 +317,22 @@
           "peak_vs_alert": 1.48
         }
       ],
-      "share_on_last_6h_all": 0.08907493203878403,
-      "share_on_last_6h_pre_episode": 0.08831342309713364,
+      "share_on_last_6h_all": 0.09292822331190109,
+      "share_on_last_6h_pre_episode": 0.09538912773132324,
       "uniform_share_last_6h": 0.08333333333333333,
       "pre_episode_pairs": 131,
-      "attention_per_imputed_hour": 0.013550138978100328,
-      "attention_per_measured_hour": 0.0138957923207619,
-      "imputed_vs_measured_ratio": 0.9751253232141986,
+      "attention_per_imputed_hour": 0.013574128428464213,
+      "attention_per_measured_hour": 0.01389530203889866,
+      "imputed_vs_measured_ratio": 0.9768861727844886,
       "windows_with_imputed_and_measured": 2103,
       "uniform_attention_per_hour": 0.013888888888888888
     },
     "graph": {
       "graph_forecaster": {
-        "mean_share_self": 0.734967361997675,
-        "mean_share_other_nodes_total": 0.2650326427365481,
-        "mean_share_lane_neighbours": 0.24444550655230327,
-        "median_neighbour_lift": 7.445889669480775
+        "mean_share_self": 0.7699554849553991,
+        "mean_share_other_nodes_total": 0.2300445233639847,
+        "mean_share_lane_neighbours": 0.2093508562280072,
+        "median_neighbour_lift": 7.2592483227700635
       },
       "graph_none": {
         "mean_share_self": 1.0,

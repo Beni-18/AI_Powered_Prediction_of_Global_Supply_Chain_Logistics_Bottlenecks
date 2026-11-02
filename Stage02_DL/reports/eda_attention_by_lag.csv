@@ -1,145 +1,145 @@
 window,hours_before_origin,mean_attention
-all test origins,71,0.01408
-all test origins,70,0.01339
-all test origins,69,0.01369
-all test origins,68,0.01358
-all test origins,67,0.01348
-all test origins,66,0.01386
-all test origins,65,0.0139
-all test origins,64,0.01343
-all test origins,63,0.01322
-all test origins,62,0.01342
+all test origins,71,0.0145
+all test origins,70,0.01461
+all test origins,69,0.01457
+all test origins,68,0.01475
+all test origins,67,0.01454
+all test origins,66,0.01449
+all test origins,65,0.01425
+all test origins,64,0.01403
+all test origins,63,0.01377
+all test origins,62,0.01389
 all test origins,61,0.01352
-all test origins,60,0.01343
-all test origins,59,0.01344
-all test origins,58,0.01333
-all test origins,57,0.01339
-all test origins,56,0.01354
-all test origins,55,0.01352
-all test origins,54,0.01369
-all test origins,53,0.01369
-all test origins,52,0.0135
-all test origins,51,0.01371
-all test origins,50,0.01352
-all test origins,49,0.01365
-all test origins,48,0.01381
-all test origins,47,0.01373
-all test origins,46,0.01357
-all test origins,45,0.01358
-all test origins,44,0.0135
-all test origins,43,0.01355
-all test origins,42,0.01371
+all test origins,60,0.01319
+all test origins,59,0.01298
+all test origins,58,0.01306
+all test origins,57,0.01291
+all test origins,56,0.01291
+all test origins,55,0.013
+all test origins,54,0.01285
+all test origins,53,0.01296
+all test origins,52,0.01272
+all test origins,51,0.01299
+all test origins,50,0.0129
+all test origins,49,0.01295
+all test origins,48,0.01318
+all test origins,47,0.01332
+all test origins,46,0.01327
+all test origins,45,0.01346
+all test origins,44,0.0139
+all test origins,43,0.01364
+all test origins,42,0.0138
 all test origins,41,0.01384
-all test origins,40,0.01345
-all test origins,39,0.01338
-all test origins,38,0.01331
-all test origins,37,0.01329
-all test origins,36,0.01371
-all test origins,35,0.01371
-all test origins,34,0.01365
-all test origins,33,0.01345
-all test origins,32,0.01381
-all test origins,31,0.01371
-all test origins,30,0.01392
-all test origins,29,0.01408
-all test origins,28,0.01429
-all test origins,27,0.01379
-all test origins,26,0.01406
-all test origins,25,0.01376
-all test origins,24,0.0142
-all test origins,23,0.01438
-all test origins,22,0.01403
-all test origins,21,0.01404
-all test origins,20,0.0142
-all test origins,19,0.01372
-all test origins,18,0.01419
-all test origins,17,0.01415
-all test origins,16,0.01413
-all test origins,15,0.01402
-all test origins,14,0.01454
-all test origins,13,0.01402
-all test origins,12,0.01434
-all test origins,11,0.01424
-all test origins,10,0.01446
-all test origins,9,0.0142
-all test origins,8,0.01437
-all test origins,7,0.01429
-all test origins,6,0.01478
-all test origins,5,0.0148
-all test origins,4,0.01448
-all test origins,3,0.01499
-all test origins,2,0.01515
-all test origins,1,0.01495
-all test origins,0,0.0147
-1-48 h before an episode,71,0.0139
-1-48 h before an episode,70,0.01335
-1-48 h before an episode,69,0.0138
-1-48 h before an episode,68,0.0135
-1-48 h before an episode,67,0.0137
-1-48 h before an episode,66,0.01378
-1-48 h before an episode,65,0.0138
-1-48 h before an episode,64,0.01348
-1-48 h before an episode,63,0.01355
-1-48 h before an episode,62,0.01355
-1-48 h before an episode,61,0.01384
-1-48 h before an episode,60,0.01362
-1-48 h before an episode,59,0.01366
-1-48 h before an episode,58,0.01336
-1-48 h before an episode,57,0.01362
-1-48 h before an episode,56,0.01394
-1-48 h before an episode,55,0.01386
-1-48 h before an episode,54,0.01374
-1-48 h before an episode,53,0.01399
-1-48 h before an episode,52,0.01351
-1-48 h before an episode,51,0.01362
-1-48 h before an episode,50,0.01364
-1-48 h before an episode,49,0.01377
-1-48 h before an episode,48,0.01359
-1-48 h before an episode,47,0.01364
-1-48 h before an episode,46,0.01342
-1-48 h before an episode,45,0.01319
-1-48 h before an episode,44,0.01375
-1-48 h before an episode,43,0.01348
-1-48 h before an episode,42,0.01369
-1-48 h before an episode,41,0.01368
-1-48 h before an episode,40,0.01356
-1-48 h before an episode,39,0.01309
-1-48 h before an episode,38,0.01345
-1-48 h before an episode,37,0.01335
-1-48 h before an episode,36,0.01417
-1-48 h before an episode,35,0.01383
-1-48 h before an episode,34,0.01395
-1-48 h before an episode,33,0.01364
-1-48 h before an episode,32,0.01368
-1-48 h before an episode,31,0.01392
-1-48 h before an episode,30,0.01411
-1-48 h before an episode,29,0.01398
-1-48 h before an episode,28,0.01424
-1-48 h before an episode,27,0.01376
-1-48 h before an episode,26,0.01414
-1-48 h before an episode,25,0.01395
-1-48 h before an episode,24,0.01414
-1-48 h before an episode,23,0.01381
-1-48 h before an episode,22,0.01394
-1-48 h before an episode,21,0.01381
-1-48 h before an episode,20,0.01404
-1-48 h before an episode,19,0.01368
-1-48 h before an episode,18,0.01419
-1-48 h before an episode,17,0.0137
-1-48 h before an episode,16,0.01387
-1-48 h before an episode,15,0.01372
-1-48 h before an episode,14,0.01439
-1-48 h before an episode,13,0.01397
-1-48 h before an episode,12,0.01442
-1-48 h before an episode,11,0.0138
-1-48 h before an episode,10,0.01441
-1-48 h before an episode,9,0.01446
-1-48 h before an episode,8,0.01454
-1-48 h before an episode,7,0.01414
-1-48 h before an episode,6,0.01481
-1-48 h before an episode,5,0.0143
-1-48 h before an episode,4,0.01414
-1-48 h before an episode,3,0.01536
-1-48 h before an episode,2,0.01503
-1-48 h before an episode,1,0.01448
-1-48 h before an episode,0,0.015
+all test origins,40,0.01346
+all test origins,39,0.0133
+all test origins,38,0.0131
+all test origins,37,0.01299
+all test origins,36,0.01305
+all test origins,35,0.01283
+all test origins,34,0.01261
+all test origins,33,0.01264
+all test origins,32,0.01277
+all test origins,31,0.01272
+all test origins,30,0.0131
+all test origins,29,0.01321
+all test origins,28,0.01297
+all test origins,27,0.01336
+all test origins,26,0.01336
+all test origins,25,0.01374
+all test origins,24,0.01437
+all test origins,23,0.01441
+all test origins,22,0.01424
+all test origins,21,0.01474
+all test origins,20,0.01449
+all test origins,19,0.01497
+all test origins,18,0.01511
+all test origins,17,0.01497
+all test origins,16,0.01492
+all test origins,15,0.01474
+all test origins,14,0.01485
+all test origins,13,0.01451
+all test origins,12,0.01445
+all test origins,11,0.01445
+all test origins,10,0.01414
+all test origins,9,0.01454
+all test origins,8,0.01409
+all test origins,7,0.01443
+all test origins,6,0.01469
+all test origins,5,0.01492
+all test origins,4,0.01486
+all test origins,3,0.01528
+all test origins,2,0.01544
+all test origins,1,0.01609
+all test origins,0,0.01635
+1-48 h before an episode,71,0.0146
+1-48 h before an episode,70,0.01549
+1-48 h before an episode,69,0.01573
+1-48 h before an episode,68,0.01506
+1-48 h before an episode,67,0.01557
+1-48 h before an episode,66,0.01475
+1-48 h before an episode,65,0.01463
+1-48 h before an episode,64,0.01422
+1-48 h before an episode,63,0.01404
+1-48 h before an episode,62,0.01338
+1-48 h before an episode,61,0.01386
+1-48 h before an episode,60,0.01295
+1-48 h before an episode,59,0.01329
+1-48 h before an episode,58,0.01245
+1-48 h before an episode,57,0.01281
+1-48 h before an episode,56,0.01266
+1-48 h before an episode,55,0.01323
+1-48 h before an episode,54,0.01275
+1-48 h before an episode,53,0.01289
+1-48 h before an episode,52,0.0123
+1-48 h before an episode,51,0.01247
+1-48 h before an episode,50,0.01285
+1-48 h before an episode,49,0.01322
+1-48 h before an episode,48,0.01307
+1-48 h before an episode,47,0.01339
+1-48 h before an episode,46,0.013
+1-48 h before an episode,45,0.01258
+1-48 h before an episode,44,0.01362
+1-48 h before an episode,43,0.01382
+1-48 h before an episode,42,0.01326
+1-48 h before an episode,41,0.01354
+1-48 h before an episode,40,0.01227
+1-48 h before an episode,39,0.01223
+1-48 h before an episode,38,0.01275
+1-48 h before an episode,37,0.01322
+1-48 h before an episode,36,0.01316
+1-48 h before an episode,35,0.01228
+1-48 h before an episode,34,0.01184
+1-48 h before an episode,33,0.01194
+1-48 h before an episode,32,0.01223
+1-48 h before an episode,31,0.01308
+1-48 h before an episode,30,0.01302
+1-48 h before an episode,29,0.01348
+1-48 h before an episode,28,0.01262
+1-48 h before an episode,27,0.01272
+1-48 h before an episode,26,0.01354
+1-48 h before an episode,25,0.01425
+1-48 h before an episode,24,0.01421
+1-48 h before an episode,23,0.01451
+1-48 h before an episode,22,0.01377
+1-48 h before an episode,21,0.01411
+1-48 h before an episode,20,0.01415
+1-48 h before an episode,19,0.01486
+1-48 h before an episode,18,0.01527
+1-48 h before an episode,17,0.0146
+1-48 h before an episode,16,0.01486
+1-48 h before an episode,15,0.01469
+1-48 h before an episode,14,0.01526
+1-48 h before an episode,13,0.01478
+1-48 h before an episode,12,0.01553
+1-48 h before an episode,11,0.01409
+1-48 h before an episode,10,0.01432
+1-48 h before an episode,9,0.01493
+1-48 h before an episode,8,0.01472
+1-48 h before an episode,7,0.01453
+1-48 h before an episode,6,0.01535
+1-48 h before an episode,5,0.01462
+1-48 h before an episode,4,0.01462
+1-48 h before an episode,3,0.01632
+1-48 h before an episode,2,0.01627
+1-48 h before an episode,1,0.01655
+1-48 h before an episode,0,0.017

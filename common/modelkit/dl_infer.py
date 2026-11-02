@@ -11,6 +11,7 @@ Used by: Stage02_DL/05_integration_engineer.py (the /forecast API) and Role 2's 
     batch = data.batch([origin])                         # the exact tensors the model reads (for attribution)
 
 READS : Stage02_DL/artifacts/<name>.pt (weights + config + interval margins), Stage02_DL/data/scaler.json
+        Stage02_DL/artifacts/ensemble_forecaster.json + xgb_lag_sim.joblib (EnsembleForecaster)
 WRITES: nothing
 """
 
@@ -57,6 +58,48 @@ class Stage2Forecaster:
         with torch.no_grad():
             q = self.model(torch.from_numpy(batch["x"]), torch.from_numpy(batch["ctx"]), torch.from_numpy(batch["anchor"])).numpy()
         # Same split-conformal widening as in the predictions file, then back to hours / TEU per hour.
+        q[..., 0] = np.minimum(q[..., 0] - self.margins[None, None], q[..., 1])
+        q[..., 2] = np.maximum(q[..., 2] + self.margins[None, None], q[..., 1])
+        q = np.maximum(data.to_original(q), 0.0)[0]
+        hours = [h * data.spec.step_hours for h in data.spec.horizons]
+        return {"q": q, "horizons_h": hours, "targets": data.target_names, "origin_ts": data.times[origin]}
+
+
+class EnsembleForecaster:
+    """The ensemble from artifacts/ensemble_forecaster.json: the mean of the saved transformer's and xgb_lag's quantiles,
+    then the ensemble's own split-conformal margins. Same interface as Stage2Forecaster, so the API can serve it."""
+
+    def __init__(self, bundle: dict, transformer: Stage2Forecaster, xgb_bundle: dict):
+        self.bundle, self.meta, self.kind = bundle, bundle, "ensemble"
+        self.transformer, self.xgb_bundle = transformer, xgb_bundle
+        self.scaler, self.node_ids = transformer.scaler, bundle.get("node_ids")
+        self.margins = np.asarray(bundle["conformal_margin_scaled"])
+
+    @classmethod
+    def from_artifact(cls, name: str = "ensemble_forecaster") -> "EnsembleForecaster":
+        """Load the ensemble description and both member models it names."""
+        import joblib
+
+        bundle = json.loads(stage_path(2, "artifacts", f"{name}.json").read_text())
+        transformer = Stage2Forecaster.from_artifact(bundle["members"]["transformer"])
+        xgb_bundle = joblib.load(stage_path(2, "artifacts", bundle["members"]["xgb_lag"]))
+        return cls(bundle, transformer, xgb_bundle)
+
+    @property
+    def needs_network(self) -> bool:
+        """The XGBoost member reads up to 4 weeks of history, so the ensemble needs the stored grid, like the graph models."""
+        return True
+
+    def forecast(self, data: ForecastData, origin: int) -> dict:
+        """Quantile forecasts for every node at one origin, in the same format as Stage2Forecaster.forecast."""
+        from common.modelkit.dl_train import ensemble_quantiles, predict_xgb_lag
+
+        origins = np.array([origin])
+        batch = data.batch(origins)
+        with torch.no_grad():
+            q_t = self.transformer.model(*(torch.from_numpy(batch[k]) for k in ("x", "ctx", "anchor"))).numpy()
+        q = ensemble_quantiles([q_t, predict_xgb_lag(self.xgb_bundle, data, origins)])
+        # The ensemble's own split-conformal widening (from 03_dl_engineer.py), then back to original units.
         q[..., 0] = np.minimum(q[..., 0] - self.margins[None, None], q[..., 1])
         q[..., 2] = np.maximum(q[..., 2] + self.margins[None, None], q[..., 1])
         q = np.maximum(data.to_original(q), 0.0)[0]

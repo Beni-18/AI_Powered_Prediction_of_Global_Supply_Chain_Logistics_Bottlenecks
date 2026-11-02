@@ -203,10 +203,11 @@ def lag_features(data: ForecastData, origins: np.ndarray) -> tuple:
 
 
 def train_xgb_lag(data: ForecastData, train_origins: np.ndarray, val_origins: np.ndarray, n_estimators: int = 600,
-                  n_jobs: int = 4, log=print) -> dict:
+                  n_jobs: int = 4, log=print, seed: int = SEED) -> dict:
     """One XGBoost model per (horizon, target) predicting the CHANGE from the last value at 3 quantiles.
 
-    Early stopping (50 rounds) uses the VAL origins. Returns {(h_index, t_index): fitted model} plus metadata.
+    Early stopping (50 rounds) uses the VAL origins. `seed` drives the row and column sampling (seed-variance runs).
+    Returns {(h_index, t_index): fitted model} plus metadata.
     """
     import xgboost as xgb
 
@@ -225,7 +226,7 @@ def train_xgb_lag(data: ForecastData, train_origins: np.ndarray, val_origins: np
             model = xgb.XGBRegressor(objective="reg:quantileerror", quantile_alpha=np.array([0.1, 0.5, 0.9]),
                                      n_estimators=n_estimators, learning_rate=0.05, max_depth=5, subsample=0.8,
                                      colsample_bytree=0.8, min_child_weight=5, tree_method="hist",
-                                     early_stopping_rounds=50, random_state=SEED, n_jobs=n_jobs)
+                                     early_stopping_rounds=50, random_state=seed, n_jobs=n_jobs)
             model.fit(Xtr[mtr], ytr[mtr], eval_set=[(Xva[mva], yva[mva])], verbose=False)
             models[(hi, ti)] = model
             log(f"    xgb_lag {tname} h={h}: best iteration {model.best_iteration}")
@@ -264,6 +265,11 @@ def conformal_margins(q_val: np.ndarray, y_val: np.ndarray, mask: np.ndarray, co
             level = min(1.0, np.ceil((n + 1) * coverage) / n)  # finite-sample correction
             margins[h, t] = float(np.quantile(score, level))
     return margins
+
+
+def ensemble_quantiles(members: list) -> np.ndarray:
+    """Average several models' scaled quantile forecasts, then sort so q10 <= q50 <= q90 still holds."""
+    return np.sort(np.mean(np.stack(members), axis=0), axis=-1)
 
 
 def apply_margins(q: np.ndarray, margins: np.ndarray) -> np.ndarray:

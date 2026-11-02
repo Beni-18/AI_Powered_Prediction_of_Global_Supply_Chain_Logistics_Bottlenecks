@@ -101,3 +101,14 @@ def test_transformer_attention_maps_are_probabilities():
     maps = model.attention_maps(_inputs()[0])
     assert len(maps) == 1 and maps[0].shape == (B * N, L, L)
     assert np.allclose(maps[0].sum(dim=-1).numpy(), 1.0, atol=1e-5)
+
+
+def test_ensemble_quantiles_average_and_never_cross():
+    """The ensemble is the mean of the members' quantiles, re-sorted so q10 <= q50 <= q90 even if a member crossed."""
+    from common.modelkit.dl_train import ensemble_quantiles
+
+    a = np.array([[[[[1.0, 2.0, 3.0]]]]])
+    b = np.array([[[[[3.0, 1.0, 5.0]]]]])          # a member whose quantiles cross
+    out = ensemble_quantiles([a, b])
+    assert np.allclose(out, [[[[[1.5, 2.0, 4.0]]]]])
+    assert (np.diff(out, axis=-1) >= 0).all()

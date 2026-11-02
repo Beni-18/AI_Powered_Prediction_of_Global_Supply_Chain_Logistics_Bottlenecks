@@ -118,3 +118,22 @@ def test_alert_rule_follows_role4_p_star_for_the_champion_only(client, body):
     assert rule["max_prob_any_horizon"] >= ans["alert_prob_24h"]
     other = next(m["model_name"] for m in client.get("/models").json()["models"] if m["model_name"] != champion)
     assert client.post(f"/forecast?model={other}", json=body).json()["alert_rule"] is None
+
+
+@pytest.mark.skipif(not stage_path(2, "artifacts", "ensemble_forecaster.json").exists(), reason="ensemble not built")
+def test_ensemble_replay_equals_the_forecast_file(client):
+    """The served ensemble (saved transformer + xgb_lag, averaged, own margins) gives exactly its rows in the file."""
+    origin = "2025-12-01T00:00:00Z"
+    response = client.get(f"/forecast/PORT_US_LAX?as_of={origin}&model=ensemble")
+    assert response.status_code == 200, response.text
+    ans = response.json()
+    _check_answer(ans)
+    assert ans["model_name"] == "ensemble"
+    fc = pd.read_csv(stage_path(2, "predictions", "dl_forecasts.csv.gz"))
+    rows = fc[(fc["model_name"] == "ensemble") & (fc["node_id"] == "PORT_US_LAX") & (fc["origin_ts"] == origin)]
+    assert len(rows) == 10
+    for row in rows.itertuples():
+        served = next(h for h in ans["horizons"] if h["horizon_h"] == row.horizon_h)[row.target]
+        assert served["q50"] == pytest.approx(row.y_pred, abs=1e-2)
+        assert served["q10"] == pytest.approx(row.y_lo, abs=1e-2)
+        assert served["q90"] == pytest.approx(row.y_hi, abs=1e-2)

@@ -420,8 +420,9 @@ def ambiguous_graphs(S: dict, d: pd.DataFrame, r: pd.DataFrame, sigma: dict, che
         n = p["node_id"]
         win = (times >= p["start"]) & (times <= p["end"])
         res = classify_excursion(r[n][win], S["wide"][DWELL][n][win], sigma[n], S["thr"][n], K_NOISE, STRUCTURAL_H)
-        # How strongly the linked nodes moved in the same window (up to 4 nearest lanes).
-        nbrs = sorted(S["neighbours"][n], key=lambda m: S["transit_h"][(n, m)])[:4]
+        # How strongly the linked nodes moved in the same window (up to 4 nearest lanes; ties broken by node id,
+        # because a set's order changes from run to run and would change which neighbours are shown).
+        nbrs = sorted(S["neighbours"][n], key=lambda m: (S["transit_h"][(n, m)], m))[:4]
         nbr_peak = {m: float(np.nanmax(r[m][win] / sigma[m])) for m in nbrs}
         rows.append({"episode": i, **{k: p[k] for k in ("label", "node_id", "truth")},
                      "window": f"{p['start']:%Y-%m-%d %H:%M} .. {p['end']:%Y-%m-%d %H:%M}",

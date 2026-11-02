@@ -1,0 +1,9 @@
+model,n_episodes,n_caught,n_alerts,false_alarms,episode_recall,recall_lo,recall_hi,warning_cost,rule
+ensemble,6,5,36,15,0.8333,0.4365,0.9699,25.0,A_median_crosses
+graph_full,6,4,47,22,0.6667,0.3,0.9032,42.0,A_median_crosses
+graph_none,6,5,45,23,0.8333,0.4365,0.9699,33.0,A_median_crosses
+lstm,6,4,31,14,0.6667,0.3,0.9032,34.0,A_median_crosses
+persistence,6,4,84,57,0.6667,0.3,0.9032,77.0,A_median_crosses
+seasonal_naive,6,5,468,406,0.8333,0.4365,0.9699,416.0,A_median_crosses
+transformer,6,5,42,17,0.8333,0.4365,0.9699,27.0,A_median_crosses
+xgb_lag,6,4,41,23,0.6667,0.3,0.9032,43.0,A_median_crosses
