@@ -1,14 +1,13 @@
 """CASCADE control tower (Streamlit). OWNER: Role 3 (Data & Integration Engineer), integration hat.
-Simplified on 2 Nov 2026 by Role 4 at the team lead's request; Role 3 to review.
 
 Start it with:   streamlit run app.py
-Three pages in a menu at the top, nothing else:
-    Home       - what the tool does, in plain words
-    Shipments  - is each shipment predicted On time, At risk or Critical (Stage 1, machine learning)
-    Forecasts  - expected dwell time and throughput for the next 7 days at every node (Stage 2, deep learning)
+Two pages in a menu at the top, and the app opens straight on the first one (no home page to click through):
+    Shipments       - which shipments will be late, and why (Stage 1, machine learning)
+    Port forecasts  - which ports, canals and hubs will get congested in the next 7 days (Stage 2, deep learning)
 
-Design rules: show only what a planner needs to act on. No maps, no model comparisons, no evaluation charts
-(those live in the reports folders). Every number on screen comes from a file written by a role script.
+Design rules: show only what a planner acts on, with the most urgent items first. No maps, no model comparisons,
+no evaluation charts (those live in the reports folders). Every number on screen comes from a file written by a role
+script. The pages read files only, so the deployed app needs no PyTorch.
 """
 
 import sys
@@ -20,11 +19,12 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 st.set_page_config(page_title="CASCADE", layout="wide")
+# Less empty space above the page title, so the lists start higher on the screen.
+st.markdown("<style>.block-container {padding-top: 2.5rem;}</style>", unsafe_allow_html=True)
 
-# Three pages, shown as a simple menu across the top of the window.
+# Two pages, shown as a simple menu across the top of the window; Shipments opens first.
 pages = [
-    st.Page("pages/0_Home.py", title="Home", default=True),
-    st.Page("pages/1_Shipments.py", title="Shipments (ML)", url_path="shipments"),
-    st.Page("pages/2_Forecasts.py", title="Forecasts (DL)", url_path="forecasts"),
+    st.Page("pages/1_Shipments.py", title="Shipments", default=True),
+    st.Page("pages/2_Forecasts.py", title="Port forecasts", url_path="forecasts"),
 ]
 st.navigation(pages, position="top").run()
