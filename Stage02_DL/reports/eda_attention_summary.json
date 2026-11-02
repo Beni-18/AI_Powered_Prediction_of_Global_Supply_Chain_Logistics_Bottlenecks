@@ -16,13 +16,13 @@
       "peak_vs_alert": 1.48
     }
   ],
-  "share_on_last_6h_all": 0.08907493203878403,
-  "share_on_last_6h_pre_episode": 0.08831342309713364,
+  "share_on_last_6h_all": 0.09292822331190109,
+  "share_on_last_6h_pre_episode": 0.09538912773132324,
   "uniform_share_last_6h": 0.08333333333333333,
   "pre_episode_pairs": 131,
-  "attention_per_imputed_hour": 0.013550138978100328,
-  "attention_per_measured_hour": 0.0138957923207619,
-  "imputed_vs_measured_ratio": 0.9751253232141986,
+  "attention_per_imputed_hour": 0.013574128428464213,
+  "attention_per_measured_hour": 0.01389530203889866,
+  "imputed_vs_measured_ratio": 0.9768861727844886,
   "windows_with_imputed_and_measured": 2103,
   "uniform_attention_per_hour": 0.013888888888888888
 }
