@@ -20,9 +20,10 @@ data_version: v1
   - optional `?model=lstm|transformer|graph_full|graph_shuffled|graph_none`; the default is Role 4's champion (`eval_champion.json`)
 - Answers carry, for each of the 5 horizons, q10/q50/q90 for dwell and throughput, plus `alert_prob_24h` (P(dwell above the node's alert line 24 h ahead)), `alert_threshold_dwell_h`, `model_version`, `evidence` and **`requires_operator_review: true`**
 - Script mode `python 05_integration_engineer.py` -> `Stage02_DL/reports/integ_latency.json` (200 in-process calls per model)
-- `pages/3_Network_Forecast.py`: world map with lanes, nodes coloured by P(dwell above alert line) at the chosen horizon; top-10 table; model selector (persistence / XGBoost / LSTM / Transformer / graph variants); node fan chart with the 80% band and "what really happened"
-- `pages/4_Forecast_Evidence.py`: champion tiles, skill by horizon, early warning, graph ablation, real-data track (reads Role 4's `eval_*` files)
-- `app.py`: new sidebar group "Stage 2 · network forecasts"
+- Dashboard simplified on 2 Nov 2026 (team lead's request, written by Role 4): `app.py` now has two pages in a top menu, champion models only, no model picker, no maps, no evidence pages.
+  - `pages/1_Shipments.py`: test-period shipments with the chance of a 24 h+ delay (alerts only by default, filter by location), click a row for the reasons, and a form to check a new shipment
+  - `pages/2_Forecasts.py`: pick a forecast time; nodes likely above their dwell alert line in 24 h; one node's last 7 days + 7-day forecast with the 80% range and the alert line, and the same as a small table
+  - The evaluation charts stay in `Stage0N/reports/eval_*` and `eda_*` (not on screen)
 - `tests/integ/test_api_stage02.py`: answer shape, ordered intervals, review flag, 422 on short/gapped/unknown-node/out-of-range/unknown-model, refusal with a hint outside the stored period; `tests/integ/test_control_tower_pages.py` now renders the two new pages too
 
 ## Contract check (paste the output of `python scripts/validate_contract.py <schema> <file>`)

@@ -45,6 +45,17 @@ FEATURE_LABEL = {
     "eng_throughput_per_util": "Throughput per % capacity",
     "eng_labor_x_equipment_gap": "Labour shortage x missing equipment",
     "roll_node_dwell_mean_24h": "Recent dwell at this node",
+    # Node-relative and node-history inputs (from the hour BEFORE the snapshot, so nothing leaks from the future).
+    "eng_dwell_vs_node": "Dwell compared with normal at this node",
+    "eng_util_vs_node": "Capacity used compared with normal at this node",
+    "lag_capacity_utilization_pct": "Node capacity used, last hour (%)",
+    "lag_avg_dwell_time_hours": "Node dwell time, last hour (h)",
+    "lag_vessels_waiting": "Vessels waiting at the node",
+    "lag_inventory_level_teu": "Containers in the yard (TEU)",
+    "lag_dest_capacity_utilization_pct": "Capacity used at the destination (%)",
+    "lag_dest_vessels_waiting": "Vessels waiting at the destination",
+    "lag_util_change_24h": "Change in capacity used over 24 h",
+    "lag_queue_change_24h": "Change in vessels waiting over 24 h",
 }
 # Model names as a reader would say them.
 MODEL_LABEL = {
