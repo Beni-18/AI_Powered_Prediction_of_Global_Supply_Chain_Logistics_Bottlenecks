@@ -70,8 +70,10 @@ def node_label(node_id: str) -> str:
 
 fc, thr, champion = load()
 st.title("Forecasts")
-st.markdown(f"**Deep learning (Stage 2)** · model: {MODEL_WORDS.get(champion, champion)}, which reads the last 72 hours "
-            "of each port, canal and hub")
+# What history the champion reads (the ensemble's XGBoost part also reads up to 4 weeks of daily averages).
+READS = {"ensemble": "the last 72 hours (neural network) and up to 4 weeks (XGBoost) of each node"}
+st.markdown(f"**Deep learning (Stage 2)** · model: {MODEL_WORDS.get(champion, champion)}, reading "
+            f"{READS.get(champion, 'the last 72 hours of each node')}")
 st.markdown("The model forecasts the **dwell time** (how long cargo waits at a node) and the **throughput** (containers "
             "handled per hour) from 1 hour to 7 days ahead. A node **needs attention** when its dwell time is likely to "
             "go above its **alert line**: the level it stays below 95% of the time in normal operation.")
