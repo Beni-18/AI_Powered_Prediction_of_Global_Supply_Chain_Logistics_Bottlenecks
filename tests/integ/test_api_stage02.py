@@ -137,3 +137,35 @@ def test_ensemble_replay_equals_the_forecast_file(client):
         assert served["q50"] == pytest.approx(row.y_pred, abs=1e-2)
         assert served["q10"] == pytest.approx(row.y_lo, abs=1e-2)
         assert served["q90"] == pytest.approx(row.y_hi, abs=1e-2)
+
+
+def _outside_the_grid(body: dict) -> dict:
+    """The same 72 readings, moved to 2030 (after the stored grid ends)."""
+    shifted = {"node_id": body["node_id"], "records": [dict(r) for r in body["records"]]}
+    for i, r in enumerate(shifted["records"]):
+        r["hour_ts"] = (pd.Timestamp("2030-01-01T00:00:00Z") + pd.Timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return shifted
+
+
+def test_default_model_falls_back_to_the_transformer_outside_the_stored_grid(client, body):
+    """No ?model and a champion that needs network history: the answer comes from the transformer and says why."""
+    models = client.get("/models").json()
+    champion = next(m for m in models["models"] if m["is_champion"])
+    if not champion["needs_network_history"]:
+        pytest.skip("the champion reads only the posted hours, so no fallback is needed")
+    response = client.post("/forecast", json=_outside_the_grid(body))
+    assert response.status_code == 200, response.text
+    ans = response.json()
+    _check_answer(ans)
+    assert ans["model_name"] == "transformer"
+    assert ans["evidence"]["model_fallback"].startswith(f"{champion['model_name']} needs the stored network history")
+    # Inside the grid nothing is swapped.
+    assert client.post("/forecast", json=body).json()["evidence"]["model_fallback"] is None
+
+
+def test_explicit_ensemble_outside_the_stored_grid_is_still_refused(client, body):
+    """Asking for the ensemble by name is never silently swapped: it gets the clear 422 with the hint."""
+    if "ensemble" not in client.get("/health").json()["models"]:
+        pytest.skip("ensemble not built")
+    response = client.post("/forecast?model=ensemble", json=_outside_the_grid(body))
+    assert response.status_code == 422 and "model=transformer" in response.text
