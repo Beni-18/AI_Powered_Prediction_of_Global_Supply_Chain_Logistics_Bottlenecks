@@ -74,10 +74,13 @@ PASS  Stage02_DL/data/hourly_node_telemetry.csv.gz  (236520 rows, schema 'hourly
   Every forecast answer carries `requires_operator_review: true` (`/nodes` and `/network` are registry data, not predictions).
 - **Consistency:** origin 2025-12-01T00:00Z (test), 5 models x 3 nodes (PORT_US_LAX, PORT_NL_RTM, CHOKE_SUEZ) x 5 horizons x
   2 targets x 3 quantiles = 450 values; max |API - dl_forecasts.csv.gz| = 0.0000.
-- **Dashboard** (`streamlit run app.py`): all 5 pages open with no exception. Network forecast shows the map coloured by
-  P(above line); Forecast evidence shows transformer, skill 0.171 (24 h) / 0.222 (7 d), recall 0.77, median lead 22 h,
-  which equal `eval_report.md`. The log shows one scikit-learn `InconsistentVersionWarning` (Stage 1 model pickled with
-  1.8.0, loaded with 1.9.1); see open items.
+- **Dashboard** (`streamlit run app.py`, after PR #24 simplified it to two pages): Shipments and Forecasts both open with
+  no exception. Forecasts reads the champion (`transformer`, from the regenerated `eval_champion.json`) and lists nodes
+  likely above their alert line in 24 h. The Stage 1 page log shows one scikit-learn `InconsistentVersionWarning`
+  (Stage 1 model pickled with 1.8.0, loaded with 1.9.1); see open questions.
+- **Note for review:** the Forecasts page lists a node at P(dwell above line in 24 h) >= 0.50 (`ATTENTION` in
+  `pages/2_Forecasts.py`), while Role 4's validated alert rule is the highest P over all horizons >= p* = 0.65. They are
+  different questions ("watch list" vs "alert"); left unchanged, to be agreed with Role 4.
 
 ## Open questions for other roles (name the role and the question)
 - Role 4: answered. The API now returns `alert_rule` for the champion: rule B from `eval_champion.json` (highest
