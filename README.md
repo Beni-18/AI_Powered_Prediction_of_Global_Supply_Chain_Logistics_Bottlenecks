@@ -51,6 +51,7 @@ git config user.email "you@example.com"
 git config core.hooksPath .githooks             # safety hooks: strips AI attribution, blocks secrets, checks commit format
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
+# exact reproduction of the tested environment instead: pip install -r requirements-lock.txt
 python -m pytest tests -q
 python scripts/board.py
 ```

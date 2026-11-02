@@ -10,7 +10,9 @@ WHAT THIS FILE DOES
          POST /forecast                body = {"node_id": ..., "records": [72 consecutive hourly readings]}
          GET  /forecast/{node_id}?as_of=2025-12-01T00:00:00Z   replay from the stored hourly grid (demo / dashboard)
        Graph models also need every other node's recent history; the API takes it from the stored grid for the
-       same hour and swaps in the posted node's 72 hours. Outside the stored period, use ?model=lstm.
+       same hour and swaps in the posted node's 72 hours. Outside the stored period the DEFAULT model falls back
+       to the transformer (it reads only the posted 72 hours) and says so in evidence.model_fallback;
+       an explicitly requested ensemble or graph model gets a 422 instead.
     2. Run as a script (python 05_integration_engineer.py) it measures the API's own latency with 200 in-process
        calls per model and writes Stage02_DL/reports/integ_latency.json.
 
@@ -53,6 +55,7 @@ from common.seed import set_global_seed  # noqa: E402
 STAGE = 2
 INPUT_HOURS = 72                  # the models read exactly the last 72 hours (role file, Day 2)
 ALERT_HORIZON_H = 24              # alert_prob_24h = chance dwell is above the node's threshold 24 h ahead
+FALLBACK_MODEL = "transformer"    # default when the champion needs stored network history a POST does not have
 LATENCY_CALLS = 200
 MODELS = {"lstm": "lstm_forecaster", "transformer": "transformer_forecaster", "graph_full": "graph_forecaster",
           "graph_shuffled": "graph_shuffled", "graph_none": "graph_none"}
@@ -158,11 +161,21 @@ class Service:
         name, f = self.pick(model)
         last_hour = pd.Timestamp(records["hour_ts"].iloc[-1]) if records is not None else pd.Timestamp(as_of)
         last_hour = last_hour.tz_localize("UTC") if last_hour.tzinfo is None else last_hour.tz_convert("UTC")
+        in_grid = self.grid_hours[0] + pd.Timedelta(hours=INPUT_HOURS - 1) <= last_hour <= self.grid_hours[1]
+        # Default model only: the champion may need the other nodes' stored history (the ensemble and graph models do).
+        # For posted hours outside the stored grid that history does not exist, so use the transformer, which reads
+        # only the posted 72 hours, and say so. An explicitly requested model is never swapped: it gets the clear 422.
+        fallback = None
+        if (model is None and records is not None and f.needs_network and not in_grid
+                and FALLBACK_MODEL in self.forecasters):
+            fallback = (f"{name} needs the stored network history ({self.grid_hours[0]:%Y-%m-%d} .. "
+                        f"{self.grid_hours[1]:%Y-%m-%d}); used {FALLBACK_MODEL}")
+            name, f = FALLBACK_MODEL, self.forecasters[FALLBACK_MODEL]
         if records is not None and not f.needs_network:
             data, origin = single_node_window(records, node_id, self.node_ids, f.scaler)
             source = "posted 72 hours of this node only"
         else:
-            if not (self.grid_hours[0] + pd.Timedelta(hours=INPUT_HOURS - 1) <= last_hour <= self.grid_hours[1]):
+            if not in_grid:
                 raise ValueError(f"'{name}' needs the network's history at {last_hour:%Y-%m-%dT%H:%MZ}, which is outside the "
                                  f"stored grid ({self.grid_hours[0]:%Y-%m-%d} .. {self.grid_hours[1]:%Y-%m-%d}); "
                                  "use ?model=transformer or ?model=lstm, which read only the posted 72 hours")
@@ -191,7 +204,7 @@ class Service:
                 "interval": "80% (10th-90th percentile, split-conformal corrected on validation)",
                 "alert_threshold_dwell_h": None if thr is None else round(float(thr), 3), "alert_prob_24h": alert_prob,
                 "alert_rule": alert_rule,
-                "evidence": {"inputs": source, "threshold_source": "Stage02_DL/reports/eval_alert_thresholds.csv (node p95 of train dwell)",
+                "evidence": {"inputs": source, "model_fallback": fallback, "threshold_source": "Stage02_DL/reports/eval_alert_thresholds.csv (node p95 of train dwell)",
                              "champion_chosen_on": self.champion_file.get("chosen_on")},
                 "data_origin": "SYNTHETIC_CALIBRATED", "requires_operator_review": True}
 

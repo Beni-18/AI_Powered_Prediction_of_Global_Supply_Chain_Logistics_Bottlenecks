@@ -1,0 +1,88 @@
+# Exact package versions of the environment in which every test passes (Role 3, 2026-11-02).
+# Made with `pip freeze` on Python 3.12.13, macOS arm64, after
+#   pip install -r requirements.txt -r requirements-dev.txt -r Stage02_DL/requirements.txt
+# Use it to reproduce this environment exactly:   pip install -r requirements-lock.txt
+# requirements.txt keeps the >= ranges for everyday installs.
+# Note: the Stage 1 model was saved with Python 3.13.14, numpy 2.3.4, pandas 2.3.3, scikit-learn 1.8.0 and
+# xgboost 3.1.3 (Stage01_ML/artifacts/model_card.json). These pins are newer, so loading it still prints
+# scikit-learn/xgboost version warnings and Stage 1 numbers can differ slightly from Role 1's (known limitations row 10).
+altair==6.3.0
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.16.0
+attrs==26.1.0
+certifi==2026.10.23
+charset-normalizer==3.5.2
+click==8.5.0
+cloudpickle==3.1.2
+contourpy==1.4.0
+cycler==0.12.1
+fastapi==0.162.0
+filelock==4.2.6
+fonttools==4.68.0
+formulaic==1.2.2
+fsspec==2026.9.0
+h11==0.16.0
+httpcore==1.0.9
+httpcore2==2.16.0
+httpx==0.28.1
+httpx2==2.16.0
+idna==3.20
+iniconfig==2.3.1
+interface_meta==2.0.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+joblib==1.6.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+kiwisolver==1.5.1
+lightgbm==4.7.0
+MarkupSafe==3.0.4
+matplotlib==3.11.2
+mpmath==1.3.0
+narwhals==2.28.0
+networkx==3.7
+numpy==2.5.4
+opentelemetry-api==1.45.2
+packaging==26.3
+pandas==3.1.0
+patsy==1.0.3
+pillow==13.0.0
+plotly==7.1.0
+pluggy==1.7.0
+protobuf==7.36.2
+pyarrow==26.0.0
+pydantic==2.14.2
+pydantic_core==2.50.2
+pydeck==0.9.3
+Pygments==2.21.0
+pyparsing==3.3.3
+pytest==9.2.0
+python-dateutil==4.0.0
+python-multipart==0.0.33
+referencing==0.37.0
+requests==2.34.2
+rpds-py==2026.9.1
+scikit-learn==1.9.1
+scipy==1.18.1
+seaborn==0.13.2
+setuptools==84.2.1
+shap==0.54.1
+slicer==0.0.8
+starlette==1.10.0
+statsmodels==0.15.0
+streamlit==1.66.1
+sympy==1.14.0
+threadpoolctl==3.7.0
+torch==2.15.0
+tqdm==4.70.1
+truststore==0.10.5
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+tzdata==2026.6
+urllib3==2.8.0
+uvicorn==0.54.0
+websockets==17.4
+wrapt==2.5.2
+xgboost==3.4.1
+xlrd==2.0.2
