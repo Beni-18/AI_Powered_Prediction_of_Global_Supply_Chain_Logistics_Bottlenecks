@@ -34,7 +34,7 @@ On macOS, PyTorch and XGBoost clash over OpenMP in one process. The scripts and 
 | Inference helper with the exact training preprocessing (API + attribution) | `common/modelkit/dl_infer.py` | Role 1 | built |
 | Evaluation: skill + CIs, intervals, lead time, ablation, visual benchmark, slices, DM tests, real track, champion, ledger | `04_evaluation_engineer.py`, `common/evalkit/forecast.py`, `leadtime.py` | Role 4 | **run on the fast forecasts**: champion transformer, skill > 0 at 5/5 horizons, graph ablation negative; see `reports/eval_report.md`; claims C-DL-01..14 PENDING |
 | Forecast API (`POST /forecast`, `GET /forecast/{node}`, `/nodes`, `/network`, `/models`) + latency | `05_integration_engineer.py` | Role 3 | built, to review |
-| Dashboard (simplified 2 Nov: two pages, champion models only, no maps or evidence) | `app.py`, `pages/1_Shipments.py`, `pages/2_Forecasts.py` | Role 3 | built, to review + deploy |
+| Dashboard (simplified 2 Nov: Home, Shipments with On time / At risk / Critical, Forecasts; champion models only, no maps or evidence) | `app.py`, `pages/0_Home.py`, `pages/1_Shipments.py`, `pages/2_Forecasts.py` | Role 3 | built, to review + deploy |
 | Tests | `tests/{data,ml,eval,integ}/` (grid, leakage, models, eval helpers, API) | each role | passing |
 
 ## Left for each role (in priority order)
