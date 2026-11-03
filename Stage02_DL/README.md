@@ -35,7 +35,7 @@ On macOS, PyTorch and XGBoost clash over OpenMP in one process. The scripts and 
 | **Ensemble** (mean of transformer + xgb_lag quantiles, own conformal margins) and the seed-variance study (seeds 42/7/13) | `03_dl_engineer.py --add-ensemble`, `--seeds`; `dl_infer.EnsembleForecaster` | Role 1 | built 2 Nov by Role 4, to review |
 | Evaluation: skill + CIs, intervals, lead time, ablation, visual benchmark, slices, DM tests, real track, champion, ledger | `04_evaluation_engineer.py`, `common/evalkit/forecast.py`, `leadtime.py` | Role 4 | **run on the full-run forecasts**: champion `ensemble` (chosen on val), skill > 0 at 5/5 horizons, beats XGBoost at 24 h for every seed, graph ablation negative; backtest folds and seeds scored; see `reports/eval_report.md`; claims C-DL-01..16 |
 | Forecast API (`POST /forecast`, `GET /forecast/{node}`, `/nodes`, `/network`, `/models`) + latency | `05_integration_engineer.py` | Role 3 | built, to review |
-| Dashboard (two pages, no home page: Shipments with On time / At risk / Critical, Port forecasts with the validated p* early warnings; champion models only) | `app.py`, `pages/1_Shipments.py`, `pages/2_Forecasts.py` | Role 3 | reviewed, deployed, READY |
+| Dashboard (two pages, each with a check form first: Shipments - check a shipment, then all shipments by On time / At risk / Critical; Port forecasts - check a port (Congested now / Congestion warning with the validated p* / Normal), then all ports; champion models only) | `app.py`, `pages/1_Shipments.py`, `pages/2_Forecasts.py` | Role 3 | reviewed, deployed, READY |
 | Tests | `tests/{data,ml,eval,integ}/` (grid, leakage, models, eval helpers, API) | each role | passing |
 
 ## Left for each role (in priority order)
