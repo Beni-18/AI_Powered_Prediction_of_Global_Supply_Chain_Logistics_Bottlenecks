@@ -14,7 +14,7 @@ data_version: v2 (SIM v0.3 driven by real weather, PortWatch traffic and size, G
 - `Stage01_ML/reports/eval_metrics.json`, `eval_model_comparison.csv/png` | - | 7 models | test metrics with 95% day-block bootstrap intervals (1,000 resamples)
 - `Stage01_ML/reports/eval_threshold_decision.md`, `eval_cost_curve.png`, `eval_threshold_sensitivity.csv` | - | - | alert threshold and its sensitivity to the miss cost
 - `Stage01_ML/reports/eval_confusion.png`, `eval_calibration.png`, `eval_slices.csv/png`, `eval_anomaly.json`, `eval_leakage_tests.json`, `eval_api_latency.json`
-- `claims/CLAIMS_LEDGER.md` | - | 15 rows C-ML-01..15 | recomputed for XGBoost on 2026-11-03 (see the status column)
+- `claims/CLAIMS_LEDGER.md` | - | 15 rows C-ML-01..15 | recomputed for XGBoost and **VERIFIED** from a fresh clone on 2026-11-03 (every eval file identical; API p95 22.05 ms there)
 
 ## Contract check (paste the output of `python scripts/validate_contract.py <schema> <file>`)
 ```
