@@ -27,7 +27,7 @@ requires_operator_review, 0 not matching eval_champion.json.
 ```
 
 ## Decisions and assumptions (what you decided and why, in plain English)
-- The served model and alert threshold are read from `reports/eval_champion.json` (currently `logreg`, 0.37), never hard-coded.
+- The served model and alert threshold are read from `reports/eval_champion.json` (since 3 Nov `xgboost`, 0.39, decision 0012), never hard-coded.
 - `roll_node_dwell_mean_24h` needs the node's recent history; a single request has none, so the API uses the mean of the node's last 24 records in the prepared dataset.
 - `top_drivers`: per-shipment contributions (weight x standardised value) for a linear champion; the global SHAP ranking from Role 1's importance matrix for tree models.
 - `anomaly_flag` = Isolation Forest's own outlier decision on the request.
