@@ -1,11 +1,12 @@
 """CASCADE control tower - Shipments page (Stage 1, machine learning): which shipments will be late, and why?
 Owner: Role 3 (Data & Integration Engineer).
 
-What the planner sees, top to bottom (most urgent first, nothing to search for):
+What the planner sees, top to bottom:
   1. one line: what the three statuses mean and when a shipment needs a planner check
-  2. a status filter that also shows how many shipments are in each status (opens on Critical), and a location filter
-  3. the list, highest chance of Critical first; clicking a row shows that shipment's chances and reasons right below
-  4. "Check a new shipment": a closed section with the form that scores one shipment with the same code as the API
+  2. "Check a shipment": the form (open, every input labelled) and its prediction right under the Check button,
+     scored with the same code as the API
+  3. a status filter that also shows how many shipments are in each status (opens on Critical), and a location filter
+  4. the list, highest chance of Critical first; clicking a row shows that shipment's chances and reasons right below
 Only the champion model is used.
 
 READS : Stage01_ML/data/prepared_dataset.csv.gz (test-period shipments), Stage01_ML/reports/eval_champion.json,
@@ -72,7 +73,59 @@ st.caption(f"{ui.model_label(champion.get('model_name', 'STUB'))} (machine learn
            + f". A shipment needs a planner check when its chance of Critical is {threshold:.0%} or more; "
            "the tool never changes a booking by itself. Shown: the test period (Nov-Dec 2025), which the model never saw.")
 
-# Step 1: filters. The status buttons carry the counts, so no separate count tiles are needed.
+# Step 1: check a shipment. The form is open at the top and the prediction appears right under the Check button.
+with st.container(border=True):
+    st.subheader("Check a shipment")
+    st.caption("Enter where the shipment is going and the conditions where it is now, then press Check.")
+    node_ids = list(ui.nodes()["node_id"])
+    # Carrier and priority choices come from the data contract, so the form never offers a value the API rejects.
+    allowed = {c["name"]: c.get("allowed") for c in load_schema("telemetry")["columns"]}
+
+    def pick(col, label, default):
+        """Node picker that shows names but returns the official node id."""
+        return col.selectbox(label, node_ids, index=node_ids.index(default), format_func=ui.node_name)
+
+    with st.form("new_shipment", border=False):
+        r = st.columns(5)
+        values = {
+            "origin_port": pick(r[0], "From (origin port)", "PORT_CN_SHA"),
+            "destination_port": pick(r[1], "To (destination)", "PORT_US_LAX"),
+            "current_node_id": pick(r[2], "Now at (current location)", "CHOKE_SUEZ"),
+            "carrier_code": r[3].selectbox("Shipping line", allowed["carrier_code"], help="Company carrying the container"),
+            "priority_tier": r[4].selectbox("Priority", allowed["priority_tier"], format_func=PRIORITY_LABEL.get,
+                                            help="Service level booked by the customer"),
+        }
+        c = st.columns(4)
+        values |= {
+            "dwell_time_hours": c[0].number_input("Waiting so far (h)", 0.0, 400.0, 30.0,
+                                                  help="Hours already waited at the current location"),
+            "capacity_utilization_pct": c[1].number_input("Terminal capacity used (%)", 0.0, 150.0, 75.0,
+                                                          help="100% = full; up to 150% = overloaded"),
+            "throughput_teu_per_hr": c[2].number_input("Containers handled per hour (TEU)", 0.0, 2500.0, 400.0,
+                                                       help="TEU = one standard 20-foot container"),
+            "customs_hold_hours": c[3].number_input("Customs hold (h)", 0.0, 240.0, 2.0,
+                                                    help="Hours held for customs inspection"),
+            "weather_severity_index": c[0].number_input("Weather (0 calm - 10 extreme)", 0.0, 10.0, 2.0,
+                                                        help="Weather severity at the current location"),
+            "labor_deficit_ratio": c[1].number_input("Staff missing (0 = none, 1 = all)", 0.0, 1.0, 0.05,
+                                                     help="0.10 = 10% of the workforce is missing"),
+            "equipment_availability_pct": c[2].number_input("Equipment working (%)", 0.0, 100.0, 92.0,
+                                                            help="Share of cranes and handling equipment that work"),
+            "historical_delay_rate": c[3].number_input("Past late rate on this route (0-1)", 0.0, 1.0, 0.3,
+                                                       help="Share of earlier shipments on this route that were late"),
+            "record_id": "MANUAL-1",
+        }
+        submitted = st.form_submit_button("Check", type="primary")
+    if submitted:
+        answers, problems = ui.validate_and_score([values])
+        if problems:
+            st.warning(problems[0]["problem"])
+        else:
+            st.markdown("**Prediction**")
+            explain(answers[0])
+
+# Step 2: all shipments in the test period. The status buttons carry the counts, so no count tiles are needed.
+st.subheader("All shipments")
 data = table()
 counts = data["Status"].value_counts()
 options = ["Critical", "At risk", "On time", "All"]
@@ -88,7 +141,7 @@ if location != "All locations":
     view = view[view["Now at"] == location]
 view = view.reset_index(drop=True)
 
-# Step 2: the list, highest chance of Critical first. Clicking a row shows its details right below.
+# Step 3: the list, highest chance of Critical first. Clicking a row shows its details right below.
 event = st.dataframe(
     view.style.map(colour, subset=["Status"]), hide_index=True, width="stretch", height=360,
     on_select="rerun", selection_mode="single-row", key="shipments",
@@ -109,46 +162,3 @@ if rows:
             explain(answers[0])
 else:
     st.caption(f"{len(view):,} shipments. Click a row to see its chances and why.")
-
-# Step 3: check a new shipment (closed until needed, so it does not push the list down).
-with st.expander("Check a new shipment"):
-    node_ids = list(ui.nodes()["node_id"])
-    # Carrier and priority choices come from the data contract, so the form never offers a value the API rejects.
-    allowed = {c["name"]: c.get("allowed") for c in load_schema("telemetry")["columns"]}
-
-    def pick(col, label, default):
-        """Node picker that shows names but returns the official node id."""
-        return col.selectbox(label, node_ids, index=node_ids.index(default), format_func=ui.node_name)
-
-    with st.form("new_shipment", border=False):
-        r = st.columns(5)
-        values = {
-            "origin_port": pick(r[0], "From", "PORT_CN_SHA"),
-            "destination_port": pick(r[1], "To", "PORT_US_LAX"),
-            "current_node_id": pick(r[2], "Now at", "CHOKE_SUEZ"),
-            "carrier_code": r[3].selectbox("Shipping line", allowed["carrier_code"]),
-            "priority_tier": r[4].selectbox("Priority", allowed["priority_tier"], format_func=PRIORITY_LABEL.get),
-        }
-        c = st.columns(4)
-        values |= {
-            "dwell_time_hours": c[0].number_input("Waiting so far (h)", 0.0, 400.0, 30.0,
-                                                  help="Hours already waited at the current location"),
-            "capacity_utilization_pct": c[1].number_input("Terminal full (%)", 0.0, 150.0, 75.0,
-                                                          help="100% = full; up to 150% = overloaded"),
-            "throughput_teu_per_hr": c[2].number_input("Containers per hour (TEU)", 0.0, 2500.0, 400.0),
-            "customs_hold_hours": c[3].number_input("Customs hold (h)", 0.0, 240.0, 2.0),
-            "weather_severity_index": c[0].number_input("Weather (0 calm - 10 extreme)", 0.0, 10.0, 2.0),
-            "labor_deficit_ratio": c[1].number_input("Staff missing (0-1)", 0.0, 1.0, 0.05,
-                                                     help="0.10 = 10% of the workforce is missing"),
-            "equipment_availability_pct": c[2].number_input("Equipment working (%)", 0.0, 100.0, 92.0),
-            "historical_delay_rate": c[3].number_input("Route late rate (0-1)", 0.0, 1.0, 0.3,
-                                                       help="Share of earlier shipments on this route that were late"),
-            "record_id": "MANUAL-1",
-        }
-        submitted = st.form_submit_button("Check", type="primary")
-    if submitted:
-        answers, problems = ui.validate_and_score([values])
-        if problems:
-            st.warning(problems[0]["problem"])
-        else:
-            explain(answers[0])
