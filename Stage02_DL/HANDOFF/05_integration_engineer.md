@@ -96,6 +96,6 @@ PASS  Stage02_DL/data/hourly_node_telemetry.csv.gz  (236520 rows, schema 'hourly
 2. [MUST] Full-run outputs - **done** (PR #22 models, PR #25 evaluation, PR #27 ensemble). Fresh-clone run 2 Nov: every Stage 2 csv/json/md output IDENTICAL (`reports/integ_final_check.md`).
 3. [MUST] httpx + httpx2, latency over HTTP, `/docs` - **done**.
 4. [MUST] Close-out fixes - **done and merged** (PR #28): API fallback to the transformer, p* early warnings on the Forecasts page, `requirements-lock.txt`.
-5. [MUST] Deploy and check on the live URL - **done** (2 Nov, after PR #28): Home, Shipments (ML) and Forecasts (DL) load with no error and show the ensemble and the p* early warnings.
+5. [MUST] Deploy and check on the live URL - **done** (2 Nov, after PR #28): Home, Shipments (ML) and Forecasts (DL) load with no error and show the ensemble and the p* early warnings. **Re-checked 3 Nov after PRs #30 and #31** (two pages, no home page, check forms first): Shipments opens first and its "Check a shipment" form scores the default shipment (At risk 75%, no check needed); Port forecasts names the ensemble and the 65% p*, opens on 19 Nov 2025 18:00 with 1 congestion warning (Busan, 78%), 0 congested now, 26 normal. No error on either page; no reboot needed (no `common/` change). See `reports/integ_final_check.md` row 7c.
 6. [SHOULD] Polish the map - **dropped**: the team lead's simplified dashboard (PR #24) has no map.
 7. [STRETCH] Animated propagation replay - **not done**.
