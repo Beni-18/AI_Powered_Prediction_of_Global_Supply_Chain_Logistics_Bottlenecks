@@ -2,13 +2,13 @@
   "url": "http://127.0.0.1:8001",
   "calls": 1000,
   "errors": 0,
-  "p50_ms": 13.36,
-  "p95_ms": 15.36,
-  "p99_ms": 16.22,
+  "p50_ms": 19.34,
+  "p95_ms": 22.29,
+  "p99_ms": 30.75,
   "responses_without_operator_review": 0,
   "responses_without_model_version": 0,
   "responses_not_matching_champion": 0,
   "status": "PASS",
   "method": "real HTTP (urllib) against a running uvicorn server, one shipment per call",
-  "date": "2026-10-30"
+  "date": "2026-11-03"
 }

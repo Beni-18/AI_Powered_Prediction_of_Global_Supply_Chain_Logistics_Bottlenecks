@@ -1,6 +1,6 @@
 {
   "stage": 1,
-  "date": "2026-10-30",
+  "date": "2026-11-03",
   "seed": 42,
   "bootstrap_resamples": 1000,
   "integrity": {
@@ -9,7 +9,7 @@
     "y_pred_mismatch_share": 0.0
   },
   "champion": {
-    "model_name": "logreg",
+    "model_name": "xgboost",
     "beats_baseline": false,
     "best_baseline": "logreg",
     "best_candidate": "xgboost",
@@ -18,12 +18,13 @@
       -0.0059154227520216845,
       0.018824944062681478
     ],
-    "reason": "no candidate clearly beats the best baseline on validation; reporting the baseline honestly"
+    "champion_rule": "lowest_val_cost_candidate",
+    "reason": "lowest validation cost of all candidates (decision 0012); its saving over logreg on validation is NOT statistically clear (the 95% interval includes 0)"
   },
   "bayes_three_class": {
-    "cost": 0.33616670889282996,
-    "critical_alerts": 2234,
-    "macro_f1": 0.33429224891172843
+    "cost": 0.34146186977451226,
+    "critical_alerts": 2196,
+    "macro_f1": 0.2505157480485034
   },
   "split_class_mix": {
     "share_by_split": {

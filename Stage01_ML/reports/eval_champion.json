@@ -1,10 +1,18 @@
 {
   "stage": 1,
-  "model_name": "logreg",
+  "model_name": "xgboost",
   "model_version": "v1.0",
   "threshold": 0.39,
   "selected_on": "val",
   "cost_policy_version": "1.0",
-  "date": "2026-10-30",
-  "beats_baseline": false
+  "date": "2026-11-03",
+  "beats_baseline": false,
+  "best_baseline": "logreg",
+  "val_cost_saving_vs_baseline": 0.006237218813905876,
+  "val_cost_saving_ci": [
+    -0.0059154227520216845,
+    0.018824944062681478
+  ],
+  "champion_rule": "lowest_val_cost_candidate",
+  "decision": "docs/decisions/0012-stage01-deploy-xgboost.md"
 }
