@@ -23,6 +23,7 @@ Stage 1 runs end to end but its numbers move slightly with library versions (row
 | 6 | Dashboard (local) | `streamlit run app.py` | Home: ensemble named, status counts. Shipments (ML): form scored a shipment (At risk 75%), status filter (1,785 At risk), row details. Forecasts (DL): ensemble named, p* sentence (65%), chart with history, forecast, 80% range, alert line. No error on screen | PASS |
 | 7a | Ship | PR #28 | merged into `main` as `b4d26df`; `guard` checks passed; `main`: `233 passed, 23 skipped` | PASS |
 | 7b | Live app | https://aipoweredpredictionofglobalsupplychainlogisticsbottlenecks-fut.streamlit.app/ | Home and Shipments (ML) load with no error; Forecasts (DL) shows the ensemble, "Early warnings (next 7 days)" with the 65% p* sentence and "Most likely when" | PASS |
+| 7c | Live app after PRs #30 and #31 (3 Nov) | same URL; `pytest tests -q` on `6177a75` | Two pages, no home page. Shipments: "Check a shipment" scores the default shipment (At risk 75%). Port forecasts: ensemble and 65% p* named; opens on 19 Nov 2025 18:00 with 1 congestion warning (Busan 78%), 0 congested now, 26 normal; "All ports" table. No error; no reboot needed. Opening date and count re-computed independently from the files (below) | PASS |
 | 8a | Real data (fresh clone) | `python scripts/fetch_real_data.py` | exit 0, 27 min 38 s; `data/calibration/*` IDENTICAL to committed | PASS |
 | 8b | Data (fresh clone) | `cd Stage02_DL && python 01_data_engineer.py` | 236,520 rows (2,379 imputed); real track 23 nodes x 2,762 days; all 15 `Stage02_DL/data/*` + `data/calibration/*` files IDENTICAL. Contracts: `PASS hourly_node_telemetry (236520 rows)`, `PASS dl_forecasts (810000 rows)` | PASS |
 | 8c | EDA (fresh clone) | `python 02_eda_engineer.py` | exit 0 (14 min 46 s under load); all 16 `eda_*` csv/json/md IDENTICAL; noise-channel test **PASS** | PASS |
@@ -50,6 +51,20 @@ test-period windows, 1 warm-up call not counted. In-process = no network hop; a 
 The fresh-clone run shared the CPU with an unrelated training job (load average 36-72), so only its "0 failures" is
 evidence; the committed numbers were measured when the laptop was quiet (load about 3).
 
+## Early warnings vs ports already congested (step 7c)
+
+Since PR #31 the Port forecasts page splits Role 4's rule B (highest P(dwell >= alert line) over 1 h-7 d >= p* = 0.65)
+into **Congested now** (the measured waiting time is already above the line) and **Congestion warning** (not above it
+yet). Counted independently from `dl_forecasts.csv.gz`, `hourly_node_telemetry.csv.gz` and `eval_alert_thresholds.csv`
+(ensemble, test period, 151 forecast times, 27 nodes):
+- rule B fires for at most 4 nodes at one time (22 Nov 2025 00:00), which is the "4 early warnings" shown before PR #31;
+- **94% of rule-B firings are at a port that is already above its line**, so they are not early warnings;
+- true early warnings (rule fires, not yet congested): at most 1 at a time (19 Nov 2025 18:00, the page's opening date),
+  at 14 of the 151 forecast times.
+
+The page is correct; this is a property of the rule, not a page bug. It is input for open item 3 (alert-rule choice):
+rule B mostly confirms congestion that is already measured. Nothing was tuned on test numbers.
+
 ## Stage 1 details (step 8f)
 - `Stage01_ML/data/prepared_dataset.csv.gz` (Role 3): same shape (57,718 x 35), no text differences, largest numeric
   difference 7.1e-15 (last-digit rounding). Same data in value.
@@ -64,6 +79,7 @@ evidence; the committed numbers were measured when the laptop was quiet (load ab
 1. Review the EDA re-run by Role 4 and set `Stage02_DL/HANDOFF/02_eda_engineer.md` READY - **Isha (Role 2)**.
 2. Review the ensemble and the `--seeds` code (`common/modelkit/dl_infer.py`, `dl_train.py`, `03_dl_engineer.py`) - **Santhosh (Role 1)**.
 3. Alert-rule choice, p95 rule vs the structural rule (`eda_episode_rule_check.csv`) - **Isha (Role 2) + Bennish (Role 4)**.
+   New input (3 Nov): 94% of rule-B firings in the test period are at ports already above their line (section above).
 4. A second simulated year for more bottleneck episodes is **not planned** (team decision, known limitations row 13).
 5. Add `requirements-lock.txt` to the `integ` paths in `contracts/ownership.json` (its commit carries a Cross-role line) - **contracts owner, agreed by the team lead**.
 6. Exact Stage 1 reproduction on the current libraries needs the Stage 1 model re-saved with the locked versions and the
