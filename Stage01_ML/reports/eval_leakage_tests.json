@@ -120,7 +120,7 @@
   },
   "e_too_good_to_be_true": {
     "status": "PASS",
-    "champion_macro_f1": 0.6658252371596566,
+    "champion_macro_f1": 0.6797759288637129,
     "suspect_above": 0.95,
     "verdict": "plausible"
   },

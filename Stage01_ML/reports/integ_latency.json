@@ -1,10 +1,10 @@
 {
   "calls": 1000,
-  "p50_ms": 14.25,
-  "p95_ms": 16.97,
+  "p50_ms": 19.93,
+  "p95_ms": 23.42,
   "target_p95_ms": 50,
   "meets_target": true,
   "model_version": "v1.0",
   "method": "FastAPI TestClient, in-process, single-shipment /predict calls on test-split rows",
-  "date": "2026-10-30"
+  "date": "2026-11-03"
 }

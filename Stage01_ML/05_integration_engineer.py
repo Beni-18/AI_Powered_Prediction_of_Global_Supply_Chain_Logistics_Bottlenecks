@@ -246,11 +246,19 @@ class Service:
         return out
 
     def _drivers(self, X: np.ndarray, model) -> list:
-        """Top 3 reasons per shipment: per-row contributions for a linear model, else the global SHAP ranking."""
+        """Top 3 reasons per shipment: per-row contributions for a linear model or XGBoost, else the global SHAP ranking."""
         names = self.pipeline.feature_names_out
         if hasattr(model, "coef_"):
             # Contribution to the CRITICAL score = weight x standardised value; keep the three biggest pushes up.
             contrib = X * model.coef_[2]
+            return [[names[j] for j in np.argsort(-row)[:3]] for row in contrib]
+        if hasattr(model, "get_booster"):
+            import xgboost as xgb
+
+            # XGBoost's own exact per-shipment SHAP values (TreeSHAP): [rows, classes, features + bias].
+            # Keep the CRITICAL class, drop the bias column, and name the three inputs that pushed the risk up most.
+            contrib = model.get_booster().predict(xgb.DMatrix(np.asarray(X, dtype=np.float32)), pred_contribs=True)
+            contrib = contrib[:, 2, :-1] if contrib.ndim == 3 else contrib[:, :-1]
             return [[names[j] for j in np.argsort(-row)[:3]] for row in contrib]
         return [self.global_drivers[:3]] * len(X)
 

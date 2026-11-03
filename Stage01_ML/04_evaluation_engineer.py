@@ -4,7 +4,8 @@ Owner: Role 4 - Evaluation Engineer. Full instructions: docs/roles/ROLE_4_EVALUA
 WHAT THIS SCRIPT DOES
     1. Scores every model on the TEST split (macro-F1, PR-AUC, cost ...) with block-bootstrap confidence intervals.
     2. Chooses the alert threshold on the VALIDATION split by minimum expected cost, freezes it, reports on TEST.
-    3. Picks the champion (must beat the best baseline) and writes eval_champion.json for the API.
+    3. Picks the champion (lowest validation cost, decision 0012; the test against the best baseline is reported)
+       and writes eval_champion.json for the API.
     4. Draws confusion matrices, the cost curve, calibration, and slice results.
     5. Runs the leakage tests and the anomaly-detector check.
     6. Writes claims into claims/CLAIMS_LEDGER.md.
@@ -54,6 +55,10 @@ PROBA_COLS = ["p_on_time", "p_at_risk", "p_critical"]
 BASELINE_PREFIXES = ("majority", "rule", "logreg", "logistic", "baseline")
 FALLBACK_BLOCK_ROWS = 100  # used only when no timestamps are available to form day-blocks
 MIN_SLICE_ROWS = 50        # a slice with fewer test rows is too small to rank as "worst"
+# How the champion is chosen (docs/decisions/0012): the non-baseline model with the lowest VALIDATION cost is deployed,
+# even when its gain over the best baseline is not statistically clear; that test is still run and reported.
+# "must_beat_baseline" restores the stricter rule (fall back to the baseline unless the gain is clear).
+CHAMPION_RULE = "lowest_val_cost_candidate"
 
 
 # ------------------------------------------------------------------ loading
@@ -220,7 +225,8 @@ def evaluate_models(df: pd.DataFrame, cm: np.ndarray, n_boot: int) -> tuple:
 
 
 def pick_champion(df: pd.DataFrame, table: pd.DataFrame, thresholds: dict, cm: np.ndarray, n_boot: int) -> dict:
-    """Best candidate by validation cost, but only if it beats the best baseline (paired bootstrap on val)."""
+    """Best candidate by validation cost; whether it clearly beats the best baseline (paired bootstrap on val) is
+    reported, and decides the champion only under CHAMPION_RULE = "must_beat_baseline" (docs/decisions/0012)."""
     baselines, candidates = table[table["is_baseline"]], table[~table["is_baseline"]]
     best_base = baselines.sort_values("val_expected_cost").iloc[0]["model_name"] if len(baselines) else None
     if len(candidates) == 0:
@@ -236,11 +242,17 @@ def pick_champion(df: pd.DataFrame, table: pd.DataFrame, thresholds: dict, cm: n
     neg_cost = lambda t, p: -float(cm[t, p].mean())  # noqa: E731
     diff = paired_bootstrap_diff(neg_cost, (cand["t"], pred_c), (base["t"], pred_b), cand["blocks"], n=n_boot)
     beats = diff["lo"] > 0
-    chosen = best_cand if beats else best_base
+    if CHAMPION_RULE == "must_beat_baseline":
+        chosen = best_cand if beats else best_base
+        reason = ("candidate beats the best baseline on validation cost (95% paired block bootstrap)" if beats
+                  else "no candidate clearly beats the best baseline on validation; reporting the baseline honestly")
+    else:
+        chosen = best_cand
+        reason = (f"lowest validation cost of all candidates (decision 0012); its saving over {best_base} on validation is "
+                  + ("clear (95% paired block bootstrap)" if beats else "NOT statistically clear (the 95% interval includes 0)"))
     return {"model_name": chosen, "beats_baseline": bool(beats), "best_baseline": best_base, "best_candidate": best_cand,
             "val_cost_saving_vs_baseline": diff["diff"], "val_cost_saving_ci": [diff["lo"], diff["hi"]],
-            "reason": "candidate beats the best baseline on validation cost (95% paired block bootstrap)" if beats
-            else "no candidate clearly beats the best baseline on validation; reporting the baseline honestly"}
+            "champion_rule": CHAMPION_RULE, "reason": reason}
 
 
 # ------------------------------------------------------------------ figures
@@ -620,7 +632,8 @@ def main() -> int:
     table.to_csv(out_dir / "eval_model_comparison.csv", index=False)
     plot_model_comparison(table, out_dir / "eval_model_comparison.png")
 
-    # Step 3: champion = best candidate, only if it really beats the best baseline.
+    # Step 3: champion = the candidate with the lowest validation cost (decision 0012); the test against the best
+    # baseline is still run and reported in eval_champion.json, the memo and the ledger.
     champion = pick_champion(df, table, thresholds, cm, args.n_boot)
     name = champion["model_name"]
     print(f"champion: {name}  (beats baseline: {champion['beats_baseline']})")
@@ -637,7 +650,10 @@ def main() -> int:
     (out_dir / "eval_champion.json").write_text(json.dumps({
         "stage": STAGE, "model_name": name, "model_version": str(champ_row["model_version"]), "threshold": thresholds[name],
         "selected_on": "val", "cost_policy_version": policy["version"], "date": date.today().isoformat(),
-        "beats_baseline": champion["beats_baseline"]}, indent=2), encoding="utf-8")
+        "beats_baseline": champion["beats_baseline"], "best_baseline": champion.get("best_baseline"),
+        "val_cost_saving_vs_baseline": champion.get("val_cost_saving_vs_baseline"),
+        "val_cost_saving_ci": champion.get("val_cost_saving_ci"), "champion_rule": champion.get("champion_rule"),
+        "decision": "docs/decisions/0012-stage01-deploy-xgboost.md"}, indent=2, default=float), encoding="utf-8")
 
     # Step 4: figures and the threshold memo.
     shown = [name] + ([champion["best_baseline"]] if champion.get("best_baseline") and champion["best_baseline"] != name else [])
